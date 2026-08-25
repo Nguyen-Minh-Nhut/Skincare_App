@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1320" viewBox="0 0 1800 1320">
+  <defs>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #173B6C; }
+      .head { font: 700 20px Arial, sans-serif; fill: #173B6C; }
+      .text { font: 18px Arial, sans-serif; fill: #1F2937; }
+      .small { font: 16px Arial, sans-serif; fill: #374151; }
+      .note { font: 700 17px Arial, sans-serif; fill: #7C3AED; }
+      .box { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2.5; rx: 14; }
+      .life { stroke: #94A3B8; stroke-width: 2; stroke-dasharray: 8 8; }
+      .msg { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .return { stroke: #64748B; stroke-width: 2; stroke-dasharray: 7 6; fill: none; marker-end: url(#arrowGray); }
+      .frame { fill: #FAFAFF; fill-opacity: .72; stroke: #8B5CF6; stroke-width: 2; }
+      .alt { fill: #F8FAFC; fill-opacity: .85; stroke: #64748B; stroke-width: 1.8; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#334155"/></marker>
+    <marker id="arrowGray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#64748B"/></marker>
+  </defs>
+  <rect width="1800" height="1320" fill="white"/>
+  <text x="900" y="55" text-anchor="middle" class="title">BIỂU ĐỒ TUẦN TỰ – PHÂN TÍCH ẢNH DA TRÊN THIẾT BỊ</text>
+
+  <g>
+    <rect class="box" x="55" y="90" width="210" height="64"/><text class="head" x="160" y="130" text-anchor="middle">Người dùng</text>
+    <rect class="box" x="355" y="90" width="210" height="64"/><text class="head" x="460" y="130" text-anchor="middle">Flutter UI</text>
+    <rect class="box" x="680" y="90" width="230" height="64"/><text class="head" x="795" y="130" text-anchor="middle">Pipeline xử lý</text>
+    <rect class="box" x="1035" y="90" width="210" height="64"/><text class="head" x="1140" y="130" text-anchor="middle">YOLO11m</text>
+    <rect class="box" x="1450" y="90" width="250" height="64"/><text class="head" x="1575" y="130" text-anchor="middle">MobileNetV2</text>
+    <line class="life" x1="160" y1="154" x2="160" y2="1265"/><line class="life" x1="460" y1="154" x2="460" y2="1265"/>
+    <line class="life" x1="795" y1="154" x2="795" y2="1265"/><line class="life" x1="1140" y1="154" x2="1140" y2="1265"/>
+    <line class="life" x1="1575" y1="154" x2="1575" y2="1265"/>
+  </g>
+
+  <line class="msg" x1="160" y1="205" x2="460" y2="205"/><text class="text" x="310" y="193" text-anchor="middle">1. Chụp hoặc chọn ảnh</text>
+  <line class="msg" x1="460" y1="265" x2="795" y2="265"/><text class="text" x="627" y="252" text-anchor="middle">2. Gửi bytes ảnh</text>
+  <line class="msg" x1="795" y1="325" x2="1140" y2="325"/><text class="text" x="967" y="312" text-anchor="middle">3. predict(confidence ≥ 0,08)</text>
+  <line class="return" x1="1140" y1="380" x2="795" y2="380"/><text class="text" x="967" y="368" text-anchor="middle">4. Danh sách bounding box + confidence</text>
+
+  <rect class="frame" x="645" y="420" width="1010" height="610" rx="10"/>
+  <rect x="645" y="420" width="245" height="38" fill="#EDE9FE" stroke="#8B5CF6" stroke-width="2"/>
+  <text class="note" x="662" y="446">loop [mỗi bounding box]</text>
+
+  <rect class="alt" x="680" y="480" width="940" height="500" rx="8"/>
+  <rect x="680" y="480" width="285" height="36" fill="#E2E8F0" stroke="#64748B" stroke-width="1.8"/>
+  <text class="small" x="695" y="504">alt [confidence ≥ 0,15]</text>
+  <text class="text" x="815" y="565" text-anchor="middle">5a. Giữ trực tiếp</text>
+
+  <line x1="680" y1="610" x2="1620" y2="610" stroke="#64748B" stroke-width="1.8"/>
+  <rect x="680" y="610" width="420" height="36" fill="#E2E8F0" stroke="#64748B" stroke-width="1.8"/>
+  <text class="small" x="695" y="634">else [0,08 ≤ confidence &lt; 0,15]</text>
+  <line class="msg" x1="795" y1="690" x2="1575" y2="690"/><text class="text" x="1185" y="676" text-anchor="middle">5b. Crop → resize 224×224 → chuẩn hóa → classify</text>
+  <line class="return" x1="1575" y1="750" x2="795" y2="750"/><text class="text" x="1185" y="737" text-anchor="middle">6. normalScore, acneScore</text>
+
+  <rect class="alt" x="735" y="795" width="830" height="145" rx="8"/>
+  <rect x="735" y="795" width="310" height="34" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.6"/>
+  <text class="small" x="750" y="818">alt [acneScore ≥ normalScore]</text>
+  <text class="text" x="935" y="865" text-anchor="middle">7a. Giữ vùng ứng viên</text>
+  <line x1="735" y1="885" x2="1565" y2="885" stroke="#64748B" stroke-width="1.5"/>
+  <text class="small" x="750" y="914">else: Loại vùng ứng viên</text>
+
+  <line class="msg" x1="795" y1="1080" x2="795" y2="1140"/><text class="text" x="820" y="1114">8. NMS (IoU = 0,30)</text>
+  <line class="return" x1="795" y1="1175" x2="460" y2="1175"/><text class="text" x="627" y="1162" text-anchor="middle">9. Hộp sau lọc + kết quả</text>
+  <line class="return" x1="460" y1="1235" x2="160" y2="1235"/><text class="text" x="310" y="1222" text-anchor="middle">10. Hiển thị / lưu theo lựa chọn</text>
+
+  <text class="small" x="900" y="1295" text-anchor="middle">Nguồn: Tác giả đề xuất dựa trên logic triển khai của ứng dụng.</text>
+</svg>
