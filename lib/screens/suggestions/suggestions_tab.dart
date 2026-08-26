@@ -4,7 +4,43 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/default_products.dart';
 import '../app_provider.dart'; // IMPORT TỔNG ĐÀI VÀO
+
+Widget _productImage(
+  String? source, {
+  double? height,
+  double? width,
+  BoxFit fit = BoxFit.cover,
+}) {
+  const placeholder = 'https://via.placeholder.com/150';
+  final imageSource = source?.trim() ?? '';
+
+  if (imageSource.startsWith('assets/')) {
+    return Image.asset(
+      imageSource,
+      height: height,
+      width: width,
+      fit: fit,
+      errorBuilder: (_, _, _) =>
+          Image.network(placeholder, height: height, width: width, fit: fit),
+    );
+  }
+
+  return Image.network(
+    imageSource.isEmpty ? placeholder : imageSource,
+    height: height,
+    width: width,
+    fit: fit,
+    errorBuilder: (_, _, _) => Container(
+      height: height,
+      width: width,
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+    ),
+  );
+}
 
 // =========================================================================
 // 1. TRANG GỢI Ý MỸ PHẨM CHÍNH
@@ -306,29 +342,18 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('products').snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.blueAccent),
-          );
+        final productsById = <String, Map<String, dynamic>>{
+          for (final product in defaultProducts)
+            product['id'] as String: Map<String, dynamic>.from(product),
+        };
+
+        for (final doc in snapshot.data?.docs ?? const []) {
+          final product = doc.data() as Map<String, dynamic>;
+          final id = doc.id;
+          productsById[id] = {...?productsById[id], ...product, 'id': id};
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                isEn ? "No products available." : "Chưa có sản phẩm nào.",
-                style: TextStyle(color: textColor),
-              ),
-            ),
-          );
-        }
-
-        List<Map<String, dynamic>> allProducts = snapshot.data!.docs.map((doc) {
-          var data = doc.data() as Map<String, dynamic>;
-          data["id"] = doc.id;
-          return data;
-        }).toList();
+        final allProducts = productsById.values.toList();
 
         List<Map<String, dynamic>> filteredProducts =
             selectedCategory == "Tất cả"
@@ -418,9 +443,8 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(20),
                             ),
-                            child: Image.network(
-                              product["image"] ??
-                                  'https://via.placeholder.com/150',
+                            child: _productImage(
+                              product["image"] as String?,
                               height: 160,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -575,8 +599,8 @@ class ProductDetailScreen extends StatelessWidget {
             backgroundColor: bgColor,
             foregroundColor: textColor,
             flexibleSpace: FlexibleSpaceBar(
-              background: Image.network(
-                product['image'] ?? 'https://via.placeholder.com/150',
+              background: _productImage(
+                product['image'] as String?,
                 fit: BoxFit.cover,
               ),
             ),
@@ -594,7 +618,7 @@ class ProductDetailScreen extends StatelessWidget {
                     );
                   },
                 ),
-              if (isAdmin)
+              if (isAdmin && product['isBundled'] != true)
                 IconButton(
                   icon: const Icon(
                     Icons.delete_outline,

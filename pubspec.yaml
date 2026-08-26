@@ -76,6 +76,7 @@ flutter:
     - assets/image/Meow.png
     - assets/image/anh_da_mun.jpg
     - assets/image/anh_2.jpg
+    - assets/products/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
