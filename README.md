@@ -18,8 +18,9 @@
 1. YOLO11m nhận ảnh với ngưỡng confidence ban đầu `0.08`.
 2. Detection có confidence từ `0.15` trở lên được giữ trực tiếp.
 3. YOLO11s là nguồn đề xuất chính; YOLO11m xác nhận các vùng giao nhau và làm phương án dự phòng khi YOLO11s không có kết quả.
-4. Mọi vùng hợp lệ được mở rộng để lấy ngữ cảnh da, đổi về `224 × 224` và đưa qua MobileNetV2.
-5. Kết quả cuối được lọc theo xác suất MobileNetV2 và NMS để loại khung trùng.
+4. Vùng được hai YOLO đồng thuận và có confidence từ `0.15` được giữ trực tiếp.
+5. Vùng yếu hoặc chỉ một YOLO phát hiện được mở rộng lấy ngữ cảnh da, đổi về `224 × 224` và đưa qua MobileNetV2.
+6. Kết quả cuối được lọc bằng NMS để loại khung trùng.
 5. NMS với ngưỡng IoU `0.30` loại các bounding box trùng lặp.
 
 ## Yêu cầu

@@ -106,6 +106,29 @@ void main() {
     });
   });
 
+  group('shouldTrustDetectorAgreement', () {
+    test('keeps only sufficiently confident two-model agreement', () {
+      expect(
+        shouldTrustDetectorAgreement(
+          detectorConfidence: 0.15,
+          detectorVotes: 2,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldTrustDetectorAgreement(
+          detectorConfidence: 0.149,
+          detectorVotes: 2,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldTrustDetectorAgreement(detectorConfidence: 0.9, detectorVotes: 1),
+        isFalse,
+      );
+    });
+  });
+
   group('isPlausibleAcneBox', () {
     test('rejects oversized face-part boxes and keeps lesion-sized boxes', () {
       expect(

@@ -50,6 +50,14 @@ bool shouldRunAcneClassifier({
   return detectorConfidence >= minConfidence;
 }
 
+bool shouldTrustDetectorAgreement({
+  required double detectorConfidence,
+  required int detectorVotes,
+  double trustedDetectorConfidence = 0.15,
+}) {
+  return detectorVotes >= 2 && detectorConfidence >= trustedDetectorConfidence;
+}
+
 bool shouldKeepAcneDetection({
   required double detectorConfidence,
   required double normalScore,
@@ -190,9 +198,9 @@ List<AcneBox> combineDetectorBoxes(
       top: preferred.top,
       width: preferred.width,
       height: preferred.height,
-      confidence: matchingLegacy == null
-          ? preferred.confidence
-          : math.max(preferred.confidence, matchingLegacy.confidence),
+      // Ngưỡng tin cậy luôn dựa trên YOLO11s chính; YOLO11m chỉ cung cấp
+      // phiếu đồng thuận, không được phép làm tăng confidence của vùng.
+      confidence: preferred.confidence,
       detectorVotes: matchingLegacy == null ? 1 : 2,
     );
   }).toList();
@@ -430,6 +438,15 @@ class AcneDetectorPipeline {
     var classifiedCount = 0;
     final classifierWatch = Stopwatch()..start();
     for (final box in candidates) {
+      if (shouldTrustDetectorAgreement(
+        detectorConfidence: box.confidence,
+        detectorVotes: box.detectorVotes,
+        trustedDetectorConfidence: trustedDetectorConfidence,
+      )) {
+        finalBoxes.add(box);
+        continue;
+      }
+
       final classifierBox = expandBoxForClassification(
         box,
         imageWidth: originalImg.width,
@@ -446,8 +463,8 @@ class AcneDetectorPipeline {
         originalImg.height - cropY,
       );
 
-      // Tất cả detection đều phải được MobileNetV2 xác thực. Confidence cao
-      // của YOLO không đủ để giữ một vùng nếu classifier nhận đó là da thường.
+      // Vùng yếu hoặc chỉ một YOLO phát hiện phải qua MobileNetV2 để giảm
+      // dương tính giả. Vùng mạnh được cả hai YOLO đồng thuận đã giữ ở trên.
       if (!shouldRunAcneClassifier(
         detectorConfidence: box.confidence,
         minConfidence: minConfidence,
