@@ -50,12 +50,16 @@ bool shouldRunAcneClassifier({
   return detectorConfidence >= minConfidence;
 }
 
-bool shouldTrustDetectorAgreement({
+bool shouldTrustYoloDetection({
   required double detectorConfidence,
-  required int detectorVotes,
+  double? widthFraction,
+  double? heightFraction,
   double trustedDetectorConfidence = 0.15,
 }) {
-  return detectorVotes >= 2 && detectorConfidence >= trustedDetectorConfidence;
+  final lesionSized =
+      (widthFraction == null || widthFraction <= 0.08) &&
+      (heightFraction == null || heightFraction <= 0.08);
+  return detectorConfidence >= trustedDetectorConfidence && lesionSized;
 }
 
 bool shouldKeepAcneDetection({
@@ -103,11 +107,20 @@ bool isPlausibleAcneBox(
   final heightFraction = box.height / imageHeight;
   final areaFraction = box.width * box.height / (imageWidth * imageHeight);
   final aspectRatio = box.width / box.height;
+  final centerX = (box.left + box.width / 2) / imageWidth;
+  final centerY = (box.top + box.height / 2) / imageHeight;
+  // Selfie phân tích da phải nằm trong vùng mặt trung tâm. Ellipse này loại
+  // đèn, trần, nền và phần tóc ở các góc mà detector dễ nhận nhầm thành mụn.
+  final normalizedFaceDistance =
+      math.pow((centerX - 0.5) / 0.44, 2) +
+      math.pow((centerY - 0.52) / 0.50, 2);
   return widthFraction <= maxSideFraction &&
       heightFraction <= maxSideFraction &&
       areaFraction <= maxAreaFraction &&
       aspectRatio >= minAspectRatio &&
-      aspectRatio <= maxAspectRatio;
+      aspectRatio <= maxAspectRatio &&
+      centerY >= 0.06 &&
+      normalizedFaceDistance <= 1.0;
 }
 
 AcneBox expandBoxForClassification(
@@ -167,43 +180,6 @@ double _intersectionOverSmallerArea(AcneBox a, AcneBox b) {
   return smallerArea <= 0
       ? 0
       : intersectionWidth * intersectionHeight / smallerArea;
-}
-
-List<AcneBox> combineDetectorBoxes(
-  List<AcneBox> legacyBoxes,
-  List<AcneBox> preferredBoxes, {
-  double agreementIou = 0.15,
-  double agreementContainment = 0.50,
-}) {
-  // YOLO11s mới là nguồn đề xuất chính. Nếu nó không trả được kết quả do
-  // khác miền dữ liệu, pipeline mới dùng YOLO11m cũ làm fallback.
-  if (preferredBoxes.isEmpty) return legacyBoxes;
-
-  return preferredBoxes.map((preferred) {
-    AcneBox? matchingLegacy;
-    var bestAgreement = 0.0;
-    for (final legacy in legacyBoxes) {
-      final iou = _intersectionOverUnion(preferred, legacy);
-      final containment = _intersectionOverSmallerArea(preferred, legacy);
-      final agreement = math.max(iou, containment);
-      if ((iou >= agreementIou || containment >= agreementContainment) &&
-          agreement > bestAgreement) {
-        matchingLegacy = legacy;
-        bestAgreement = agreement;
-      }
-    }
-
-    return AcneBox(
-      left: preferred.left,
-      top: preferred.top,
-      width: preferred.width,
-      height: preferred.height,
-      // Ngưỡng tin cậy luôn dựa trên YOLO11s chính; YOLO11m chỉ cung cấp
-      // phiếu đồng thuận, không được phép làm tăng confidence của vùng.
-      confidence: preferred.confidence,
-      detectorVotes: matchingLegacy == null ? 1 : 2,
-    );
-  }).toList();
 }
 
 List<AcneBox> suppressDuplicateBoxes(
@@ -278,29 +254,18 @@ List<AcneBox> parseYoloBoxes(
 }
 
 class AcneDetectorPipeline {
-  AcneDetectorPipeline._(
-    this._legacyDetector,
-    this._preferredDetector,
-    this._classifier,
-  );
+  AcneDetectorPipeline._(this._detector, this._classifier);
 
-  final YOLO _legacyDetector;
-  final YOLO _preferredDetector;
+  final YOLO _detector;
   final Interpreter _classifier;
   bool _loaded = false;
   bool _disposed = false;
 
   static const String _yoloPath = 'assets/models/acne_detector.tflite';
-  static const String _preferredYoloPath =
-      'assets/models/yolo11s_best_w8a32.tflite';
   static const String _cnnPath = 'assets/models/model_phan_loai_mun.tflite';
 
   static Future<AcneDetectorPipeline> create() async {
-    final legacyDetector = YOLO(modelPath: _yoloPath, task: YOLOTask.detect);
-    final preferredDetector = YOLO(
-      modelPath: _preferredYoloPath,
-      task: YOLOTask.detect,
-    );
+    final detector = YOLO(modelPath: _yoloPath, task: YOLOTask.detect);
     final classifier = await Interpreter.fromAsset(_cnnPath);
     final inputShape = classifier.getInputTensor(0).shape;
     final outputShape = classifier.getOutputTensor(0).shape;
@@ -313,11 +278,7 @@ class AcneDetectorPipeline {
       );
     }
 
-    final pipeline = AcneDetectorPipeline._(
-      legacyDetector,
-      preferredDetector,
-      classifier,
-    );
+    final pipeline = AcneDetectorPipeline._(detector, classifier);
     try {
       await pipeline._ensureLoaded();
       return pipeline;
@@ -330,11 +291,8 @@ class AcneDetectorPipeline {
   Future<void> _ensureLoaded() async {
     if (_disposed) throw StateError('Acne detector đã được giải phóng.');
     if (_loaded) return;
-    if (!await _legacyDetector.loadModel()) {
+    if (!await _detector.loadModel()) {
       throw StateError('Không thể tải YOLO11m.');
-    }
-    if (!await _preferredDetector.loadModel()) {
-      throw StateError('Không thể tải YOLO11s bổ sung.');
     }
     _loaded = true;
   }
@@ -377,11 +335,7 @@ class AcneDetectorPipeline {
     await _ensureLoaded();
     final finalBoxes = <AcneBox>[];
     final yoloWatch = Stopwatch()..start();
-    final legacyResults = await _legacyDetector.predict(
-      imageBytes,
-      confidenceThreshold: minConfidence,
-    );
-    final preferredResults = await _preferredDetector.predict(
+    final detectorResults = await _detector.predict(
       imageBytes,
       confidenceThreshold: minConfidence,
     );
@@ -402,21 +356,11 @@ class AcneDetectorPipeline {
         classifiedCount: 0,
       );
     }
-    final legacyCandidates = parseYoloBoxes(
-      legacyResults,
+    final rawCandidates = parseYoloBoxes(
+      detectorResults,
       imageWidth: originalImg.width,
       imageHeight: originalImg.height,
       minConfidence: minConfidence,
-    );
-    final preferredCandidates = parseYoloBoxes(
-      preferredResults,
-      imageWidth: originalImg.width,
-      imageHeight: originalImg.height,
-      minConfidence: minConfidence,
-    );
-    final rawCandidates = combineDetectorBoxes(
-      legacyCandidates,
-      preferredCandidates,
     );
     final candidates = rawCandidates
         .where(
@@ -427,20 +371,15 @@ class AcneDetectorPipeline {
           ),
         )
         .toList();
-    final agreedCount = candidates
-        .where((box) => box.detectorVotes >= 2)
-        .length;
-    debugPrint(
-      'AI detector: ${candidates.length} vùng từ YOLO11s, '
-      '$agreedCount vùng được YOLO11m xác nhận.',
-    );
+    debugPrint('AI detector: ${candidates.length} vùng từ YOLO11m.');
 
     var classifiedCount = 0;
     final classifierWatch = Stopwatch()..start();
     for (final box in candidates) {
-      if (shouldTrustDetectorAgreement(
+      if (shouldTrustYoloDetection(
         detectorConfidence: box.confidence,
-        detectorVotes: box.detectorVotes,
+        widthFraction: box.width / originalImg.width,
+        heightFraction: box.height / originalImg.height,
         trustedDetectorConfidence: trustedDetectorConfidence,
       )) {
         finalBoxes.add(box);
@@ -541,7 +480,6 @@ class AcneDetectorPipeline {
     if (_disposed) return;
     _disposed = true;
     _classifier.close();
-    await _legacyDetector.dispose();
-    await _preferredDetector.dispose();
+    await _detector.dispose();
   }
 }

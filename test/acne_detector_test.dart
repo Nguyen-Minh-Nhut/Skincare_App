@@ -55,47 +55,6 @@ void main() {
     });
   });
 
-  group('combineDetectorBoxes', () {
-    test('marks overlapping YOLO boxes as two-model agreement', () {
-      const legacy = [
-        AcneBox(left: 10, top: 10, width: 30, height: 30, confidence: 0.4),
-      ];
-      const preferred = [
-        AcneBox(left: 12, top: 12, width: 28, height: 28, confidence: 0.6),
-      ];
-
-      final result = combineDetectorBoxes(legacy, preferred);
-
-      expect(result, hasLength(1));
-      expect(result.single.detectorVotes, 2);
-      expect(result.single.confidence, 0.6);
-      expect(result.single.left, 12);
-    });
-
-    test('keeps YOLO11s proposals and does not add unmatched legacy boxes', () {
-      const legacy = [
-        AcneBox(left: 80, top: 80, width: 15, height: 15, confidence: 0.9),
-      ];
-      const preferred = [
-        AcneBox(left: 10, top: 10, width: 12, height: 12, confidence: 0.5),
-      ];
-
-      final result = combineDetectorBoxes(legacy, preferred);
-
-      expect(result, hasLength(1));
-      expect(result.single.left, 10);
-      expect(result.single.detectorVotes, 1);
-    });
-
-    test('falls back to legacy detector when YOLO11s returns no boxes', () {
-      const legacy = [
-        AcneBox(left: 20, top: 20, width: 10, height: 10, confidence: 0.4),
-      ];
-
-      expect(combineDetectorBoxes(legacy, const []), same(legacy));
-    });
-  });
-
   group('shouldRunAcneClassifier', () {
     test('classifies every detection at or above the YOLO threshold', () {
       expect(shouldRunAcneClassifier(detectorConfidence: 0.079), isFalse);
@@ -106,24 +65,16 @@ void main() {
     });
   });
 
-  group('shouldTrustDetectorAgreement', () {
-    test('keeps only sufficiently confident two-model agreement', () {
+  group('shouldTrustYoloDetection', () {
+    test('keeps only sufficiently confident lesion-sized detections', () {
+      expect(shouldTrustYoloDetection(detectorConfidence: 0.15), isTrue);
+      expect(shouldTrustYoloDetection(detectorConfidence: 0.149), isFalse);
       expect(
-        shouldTrustDetectorAgreement(
-          detectorConfidence: 0.15,
-          detectorVotes: 2,
+        shouldTrustYoloDetection(
+          detectorConfidence: 0.9,
+          widthFraction: 0.13,
+          heightFraction: 0.07,
         ),
-        isTrue,
-      );
-      expect(
-        shouldTrustDetectorAgreement(
-          detectorConfidence: 0.149,
-          detectorVotes: 2,
-        ),
-        isFalse,
-      );
-      expect(
-        shouldTrustDetectorAgreement(detectorConfidence: 0.9, detectorVotes: 1),
         isFalse,
       );
     });
@@ -148,8 +99,8 @@ void main() {
       expect(
         isPlausibleAcneBox(
           const AcneBox(
-            left: 100,
-            top: 100,
+            left: 480,
+            top: 480,
             width: 45,
             height: 50,
             confidence: 0.4,
@@ -175,6 +126,54 @@ void main() {
           imageHeight: 1000,
         ),
         isFalse,
+      );
+    });
+
+    test('rejects background detections outside the central face region', () {
+      expect(
+        isPlausibleAcneBox(
+          const AcneBox(
+            left: 10,
+            top: 5,
+            width: 40,
+            height: 40,
+            confidence: 0.8,
+          ),
+          imageWidth: 1000,
+          imageHeight: 1000,
+        ),
+        isFalse,
+      );
+    });
+
+    test('allows central candidates for the classifier to verify', () {
+      expect(
+        isPlausibleAcneBox(
+          const AcneBox(
+            left: 400,
+            top: 250,
+            width: 130,
+            height: 90,
+            confidence: 0.8,
+          ),
+          imageWidth: 1000,
+          imageHeight: 1000,
+        ),
+        isTrue,
+      );
+      expect(
+        isPlausibleAcneBox(
+          const AcneBox(
+            left: 480,
+            top: 350,
+            width: 35,
+            height: 40,
+            confidence: 0.4,
+          ),
+          imageWidth: 1000,
+          imageHeight: 1000,
+        ),
+        isTrue,
       );
     });
   });
