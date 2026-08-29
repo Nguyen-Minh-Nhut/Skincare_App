@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -42,10 +44,8 @@ class AcneDetectionBenchmark {
 bool shouldRunAcneClassifier({
   required double detectorConfidence,
   double minConfidence = 0.08,
-  double trustedDetectorConfidence = 0.15,
 }) {
-  return detectorConfidence >= minConfidence &&
-      detectorConfidence < trustedDetectorConfidence;
+  return detectorConfidence >= minConfidence;
 }
 
 bool shouldKeepAcneDetection({
@@ -54,8 +54,47 @@ bool shouldKeepAcneDetection({
   required double acneScore,
   double trustedDetectorConfidence = 0.15,
 }) {
-  return acneScore >= normalScore ||
-      detectorConfidence >= trustedDetectorConfidence;
+  if (!normalScore.isFinite || !acneScore.isFinite) return false;
+
+  final scoreSum = normalScore + acneScore;
+  final looksLikeProbabilities =
+      normalScore >= 0 &&
+      acneScore >= 0 &&
+      scoreSum >= 0.98 &&
+      scoreSum <= 1.02;
+  final acneProbability = looksLikeProbabilities
+      ? acneScore / scoreSum
+      : 1 / (1 + math.exp(normalScore - acneScore));
+  final requiredProbability = detectorConfidence >= trustedDetectorConfidence
+      ? 0.55
+      : 0.65;
+  return acneProbability >= requiredProbability;
+}
+
+bool isPlausibleAcneBox(
+  AcneBox box, {
+  required int imageWidth,
+  required int imageHeight,
+  double maxSideFraction = 0.16,
+  double maxAreaFraction = 0.02,
+  double minAspectRatio = 0.40,
+  double maxAspectRatio = 2.50,
+}) {
+  if (imageWidth <= 0 ||
+      imageHeight <= 0 ||
+      box.width <= 0 ||
+      box.height <= 0) {
+    return false;
+  }
+  final widthFraction = box.width / imageWidth;
+  final heightFraction = box.height / imageHeight;
+  final areaFraction = box.width * box.height / (imageWidth * imageHeight);
+  final aspectRatio = box.width / box.height;
+  return widthFraction <= maxSideFraction &&
+      heightFraction <= maxSideFraction &&
+      areaFraction <= maxAreaFraction &&
+      aspectRatio >= minAspectRatio &&
+      aspectRatio <= maxAspectRatio;
 }
 
 double _intersectionOverUnion(AcneBox a, AcneBox b) {
@@ -78,14 +117,40 @@ double _intersectionOverUnion(AcneBox a, AcneBox b) {
 List<AcneBox> suppressDuplicateBoxes(
   List<AcneBox> boxes, {
   double iouThreshold = 0.30,
+  double containmentThreshold = 0.70,
 }) {
   final sorted = [...boxes]
     ..sort((a, b) => b.confidence.compareTo(a.confidence));
   final kept = <AcneBox>[];
   for (final candidate in sorted) {
-    if (kept.every(
-      (box) => _intersectionOverUnion(candidate, box) < iouThreshold,
-    )) {
+    if (kept.every((box) {
+      final intersectionLeft = candidate.left > box.left
+          ? candidate.left
+          : box.left;
+      final intersectionTop = candidate.top > box.top ? candidate.top : box.top;
+      final intersectionRight =
+          candidate.left + candidate.width < box.left + box.width
+          ? candidate.left + candidate.width
+          : box.left + box.width;
+      final intersectionBottom =
+          candidate.top + candidate.height < box.top + box.height
+          ? candidate.top + candidate.height
+          : box.top + box.height;
+      final intersectionWidth = intersectionRight - intersectionLeft;
+      final intersectionHeight = intersectionBottom - intersectionTop;
+      final intersectionArea = intersectionWidth > 0 && intersectionHeight > 0
+          ? intersectionWidth * intersectionHeight
+          : 0.0;
+      final smallerArea =
+          candidate.width * candidate.height < box.width * box.height
+          ? candidate.width * candidate.height
+          : box.width * box.height;
+      final containment = smallerArea <= 0
+          ? 0.0
+          : intersectionArea / smallerArea;
+      return _intersectionOverUnion(candidate, box) < iouThreshold &&
+          containment < containmentThreshold;
+    })) {
       kept.add(candidate);
     }
   }
@@ -246,12 +311,21 @@ class AcneDetectorPipeline {
         classifiedCount: 0,
       );
     }
-    final candidates = parseYoloBoxes(
+    final rawCandidates = parseYoloBoxes(
       results,
       imageWidth: originalImg.width,
       imageHeight: originalImg.height,
       minConfidence: minConfidence,
     );
+    final candidates = rawCandidates
+        .where(
+          (box) => isPlausibleAcneBox(
+            box,
+            imageWidth: originalImg.width,
+            imageHeight: originalImg.height,
+          ),
+        )
+        .toList();
     debugPrint('AI detector: ${candidates.length} vùng nghi ngờ từ YOLO.');
 
     var classifiedCount = 0;
@@ -262,22 +336,12 @@ class AcneDetectorPipeline {
       final w = box.width.ceil().clamp(1, originalImg.width - x1);
       final h = box.height.ceil().clamp(1, originalImg.height - y1);
 
-      // Detection đủ tin cậy được giữ trực tiếp. MobileNetV2 chỉ xác thực
-      // các detection yếu trong khoảng [minConfidence, trustedConfidence).
+      // Tất cả detection đều phải được MobileNetV2 xác thực. Confidence cao
+      // của YOLO không đủ để giữ một vùng nếu classifier nhận đó là da thường.
       if (!shouldRunAcneClassifier(
         detectorConfidence: box.confidence,
         minConfidence: minConfidence,
-        trustedDetectorConfidence: trustedDetectorConfidence,
       )) {
-        finalBoxes.add(
-          AcneBox(
-            left: x1.toDouble(),
-            top: y1.toDouble(),
-            width: w.toDouble(),
-            height: h.toDouble(),
-            confidence: box.confidence,
-          ),
-        );
         continue;
       }
 
@@ -319,10 +383,8 @@ class AcneDetectorPipeline {
         }
       } catch (error) {
         debugPrint('Lỗi phân loại vùng da: $error');
-        // CNN là tầng hỗ trợ. Nếu nó lỗi, vẫn giữ kết quả YOLO đủ tin cậy.
-        if (box.confidence >= trustedDetectorConfidence) {
-          finalBoxes.add(box);
-        }
+        // Fail closed: classifier lỗi thì không được biến YOLO false-positive
+        // thành kết quả chẩn đoán hiển thị cho người dùng.
       }
     }
     classifierWatch.stop();
