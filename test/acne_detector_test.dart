@@ -32,6 +32,68 @@ void main() {
         isFalse,
       );
     });
+
+    test('uses detector agreement without bypassing MobileNetV2', () {
+      expect(
+        shouldKeepAcneDetection(
+          detectorConfidence: 0.2,
+          normalScore: 0.45,
+          acneScore: 0.55,
+          detectorVotes: 2,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldKeepAcneDetection(
+          detectorConfidence: 0.9,
+          normalScore: 0.8,
+          acneScore: 0.2,
+          detectorVotes: 2,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('combineDetectorBoxes', () {
+    test('marks overlapping YOLO boxes as two-model agreement', () {
+      const legacy = [
+        AcneBox(left: 10, top: 10, width: 30, height: 30, confidence: 0.4),
+      ];
+      const preferred = [
+        AcneBox(left: 12, top: 12, width: 28, height: 28, confidence: 0.6),
+      ];
+
+      final result = combineDetectorBoxes(legacy, preferred);
+
+      expect(result, hasLength(1));
+      expect(result.single.detectorVotes, 2);
+      expect(result.single.confidence, 0.6);
+      expect(result.single.left, 12);
+    });
+
+    test('keeps YOLO11s proposals and does not add unmatched legacy boxes', () {
+      const legacy = [
+        AcneBox(left: 80, top: 80, width: 15, height: 15, confidence: 0.9),
+      ];
+      const preferred = [
+        AcneBox(left: 10, top: 10, width: 12, height: 12, confidence: 0.5),
+      ];
+
+      final result = combineDetectorBoxes(legacy, preferred);
+
+      expect(result, hasLength(1));
+      expect(result.single.left, 10);
+      expect(result.single.detectorVotes, 1);
+    });
+
+    test('falls back to legacy detector when YOLO11s returns no boxes', () {
+      const legacy = [
+        AcneBox(left: 20, top: 20, width: 10, height: 10, confidence: 0.4),
+      ];
+
+      expect(combineDetectorBoxes(legacy, const []), same(legacy));
+    });
   });
 
   group('shouldRunAcneClassifier', () {
@@ -91,6 +153,48 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  group('expandBoxForClassification', () {
+    test(
+      'adds surrounding skin context while preserving detector metadata',
+      () {
+        const box = AcneBox(
+          left: 40,
+          top: 50,
+          width: 20,
+          height: 10,
+          confidence: 0.7,
+          detectorVotes: 2,
+        );
+
+        final expanded = expandBoxForClassification(
+          box,
+          imageWidth: 200,
+          imageHeight: 200,
+        );
+
+        expect(expanded.left, 30);
+        expect(expanded.top, 45);
+        expect(expanded.width, 40);
+        expect(expanded.height, 20);
+        expect(expanded.confidence, 0.7);
+        expect(expanded.detectorVotes, 2);
+      },
+    );
+
+    test('clips the expanded crop to image boundaries', () {
+      final expanded = expandBoxForClassification(
+        const AcneBox(left: 0, top: 0, width: 20, height: 20, confidence: 0.5),
+        imageWidth: 100,
+        imageHeight: 100,
+      );
+
+      expect(expanded.left, 0);
+      expect(expanded.top, 0);
+      expect(expanded.width, 30);
+      expect(expanded.height, 30);
     });
   });
 

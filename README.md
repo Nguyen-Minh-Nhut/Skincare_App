@@ -7,7 +7,7 @@
 - Đăng ký, đăng nhập và quản lý hồ sơ với Firebase.
 - Chụp ảnh hoặc chọn ảnh từ thiết bị.
 - Phát hiện vùng nghi ngờ bằng YOLO11m chạy cục bộ.
-- Xác thực detection yếu bằng MobileNetV2.
+- Kết hợp YOLO11s, YOLO11m và MobileNetV2 để giảm nhận diện thiếu, trùng và dương tính giả.
 - Loại bounding box trùng bằng Non-Maximum Suppression.
 - Hiển thị, lưu và xem lại lịch sử phân tích.
 - Giao diện tiếng Việt/tiếng Anh, chế độ sáng/tối.
@@ -17,8 +17,9 @@
 
 1. YOLO11m nhận ảnh với ngưỡng confidence ban đầu `0.08`.
 2. Detection có confidence từ `0.15` trở lên được giữ trực tiếp.
-3. Detection trong khoảng `[0.08, 0.15)` được cắt, đổi về `224 × 224` và đưa qua MobileNetV2.
-4. Vùng yếu được giữ khi `acneScore >= normalScore`.
+3. YOLO11s là nguồn đề xuất chính; YOLO11m xác nhận các vùng giao nhau và làm phương án dự phòng khi YOLO11s không có kết quả.
+4. Mọi vùng hợp lệ được mở rộng để lấy ngữ cảnh da, đổi về `224 × 224` và đưa qua MobileNetV2.
+5. Kết quả cuối được lọc theo xác suất MobileNetV2 và NMS để loại khung trùng.
 5. NMS với ngưỡng IoU `0.30` loại các bounding box trùng lặp.
 
 ## Yêu cầu
@@ -53,6 +54,7 @@ flutter run --profile -d emulator-5554 -t lib/benchmark_main.dart
 ## Mô hình và tài sản
 
 - `assets/models/acne_detector.tflite`: mô hình YOLO11m phát hiện vùng nghi ngờ.
+- `assets/models/yolo11s_best_w8a32.tflite`: YOLO11s được chuyển từ checkpoint `yolo11s_best.pt`, dùng làm nguồn đề xuất chính.
 - `assets/models/model_phan_loai_mun.tflite`: MobileNetV2 phân loại `normal/acne`.
 - `deliverables/sequence_diagram_ai.svg`: biểu đồ tuần tự của pipeline triển khai.
 
