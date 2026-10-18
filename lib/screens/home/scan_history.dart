@@ -119,6 +119,33 @@ class ScanHistoryStore {
     return scan;
   }
 
+  static Future<void> deleteForUser(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final items = prefs.getStringList(_storageKey) ?? const <String>[];
+    final retained = <String>[];
+    for (final raw in items) {
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(raw) as Map<String, dynamic>;
+      } catch (_) {
+        retained.add(raw);
+        continue;
+      }
+      if (data['userId'] != userId) {
+        retained.add(raw);
+        continue;
+      }
+      final path = data['imagePath'];
+      if (path is String) {
+        final image = File(path);
+        if (await image.exists()) await image.delete();
+      }
+    }
+    if (!await prefs.setStringList(_storageKey, retained)) {
+      throw StateError('Could not remove local scan history');
+    }
+  }
+
   static Future<void> delete(SavedScan scan) async {
     final prefs = await SharedPreferences.getInstance();
     final items = prefs.getStringList(_storageKey) ?? const [];

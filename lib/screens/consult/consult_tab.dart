@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import '../app_provider.dart';
-import 'chat_ai_screen.dart';
+import '../../services/community_store.dart';
 
 class ConsultTab extends StatefulWidget {
   const ConsultTab({super.key});
@@ -14,6 +18,7 @@ class ConsultTab extends StatefulWidget {
 }
 
 class _ConsultTabState extends State<ConsultTab> {
+  int _postLimit = 15;
   // Giữ gốc tiếng Việt để truy vấn Database cho chuẩn
   String _selectedFilter = "Mới nhất";
   final List<String> _filters = [
@@ -58,7 +63,7 @@ class _ConsultTabState extends State<ConsultTab> {
         padding: const EdgeInsets.only(bottom: 80.0, right: 8.0),
         child: FloatingActionButton.extended(
           onPressed: () => _showCreatePostSheet(context, isEn, isDark),
-          icon: const Icon(Icons.edit_square, color: Colors.white),
+          icon: const Icon(AppIcons.editSquare, color: Colors.white),
           label: Text(
             isEn ? "Post" : "Đăng bài",
             style: const TextStyle(
@@ -104,9 +109,14 @@ class _ConsultTabState extends State<ConsultTab> {
   Widget _buildAIChatBanner(BuildContext context, bool isEn) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ChatAIScreen()),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn
+                  ? 'AI chat is temporarily unavailable.'
+                  : 'Chat AI đang tạm thời ngừng hoạt động.',
+            ),
+          ),
         );
       },
       child: Container(
@@ -136,7 +146,7 @@ class _ConsultTabState extends State<ConsultTab> {
                 borderRadius: BorderRadius.circular(15),
               ),
               child: const Icon(
-                Icons.auto_awesome,
+                AppIcons.autoAwesome,
                 color: Colors.blueAccent,
                 size: 30,
               ),
@@ -147,7 +157,9 @@ class _ConsultTabState extends State<ConsultTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isEn ? "AI Dermatologist" : "Trợ lý da liễu AI",
+                    isEn
+                        ? "AI Dermatologist (Maintenance)"
+                        : "Trợ lý da liễu AI (Đang bảo trì)",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -157,8 +169,8 @@ class _ConsultTabState extends State<ConsultTab> {
                   const SizedBox(height: 6),
                   Text(
                     isEn
-                        ? "Instant Q&A without waiting"
-                        : "Hỏi đáp nhanh không cần chờ đợi",
+                        ? "This feature will be available again soon"
+                        : "Tính năng sẽ sớm hoạt động trở lại",
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   ),
                 ],
@@ -171,9 +183,9 @@ class _ConsultTabState extends State<ConsultTab> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.arrow_forward_ios,
+                AppIcons.lockClockOutlined,
                 color: Colors.white,
-                size: 14,
+                size: 16,
               ),
             ),
           ],
@@ -230,11 +242,20 @@ class _ConsultTabState extends State<ConsultTab> {
       stream: FirebaseFirestore.instance
           .collection('posts')
           .orderBy('createdAt', descending: true)
+          .limit(_postLimit)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(color: Colors.blueAccent),
+          );
+        }
+        if (snapshot.hasError) {
+          return _FeedMessage(
+            icon: AppIcons.cloudOffOutlined,
+            message: isEn
+                ? 'Could not load the community. Please try again.'
+                : 'Không thể tải cộng đồng. Vui lòng thử lại.',
           );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -257,10 +278,27 @@ class _ConsultTabState extends State<ConsultTab> {
           docs = docs.where((doc) => doc['tag'] == _selectedFilter).toList();
         }
 
+        if (docs.isEmpty) {
+          return _FeedMessage(
+            icon: AppIcons.filterAltOffOutlined,
+            message: isEn
+                ? 'No posts match this topic.'
+                : 'Chưa có bài viết thuộc chủ đề này.',
+          );
+        }
+
         return Column(
-          children: docs
-              .map((doc) => PostCard(postDoc: doc, isEn: isEn, isDark: isDark))
-              .toList(), // Truyền biến vào đây
+          children: [
+            ...docs.map(
+              (doc) => PostCard(postDoc: doc, isEn: isEn, isDark: isDark),
+            ),
+            if (snapshot.data!.docs.length == _postLimit)
+              TextButton.icon(
+                onPressed: () => setState(() => _postLimit += 15),
+                icon: const Icon(AppIcons.expandMore),
+                label: Text(isEn ? 'Load more' : 'Xem thêm'),
+              ),
+          ],
         );
       },
     );
@@ -270,13 +308,37 @@ class _ConsultTabState extends State<ConsultTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
+      clipBehavior: Clip.antiAlias,
       builder: (context) => CreatePostSheet(isEn: isEn, isDark: isDark),
     );
   }
+}
+
+class _FeedMessage extends StatelessWidget {
+  const _FeedMessage({required this.icon, required this.message});
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(32),
+    child: Column(
+      children: [
+        Icon(icon, size: 42, color: Colors.grey),
+        const SizedBox(height: 10),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.grey),
+        ),
+      ],
+    ),
+  );
 }
 
 // ==========================================================
@@ -293,14 +355,13 @@ class CreatePostSheet extends StatefulWidget {
 
 class _CreatePostSheetState extends State<CreatePostSheet> {
   final TextEditingController _contentCtrl = TextEditingController();
-  final TextEditingController _imageCtrl = TextEditingController();
+  Uint8List? _selectedImage;
   String _selectedTag = "Hỏi đáp mụn";
   bool _isLoading = false;
 
   @override
   void dispose() {
     _contentCtrl.dispose();
-    _imageCtrl.dispose();
     super.dispose();
   }
 
@@ -321,7 +382,19 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   }
 
   Future<void> _submitPost() async {
-    if (_contentCtrl.text.trim().isEmpty) return;
+    final content = _contentCtrl.text.trim();
+    if (content.isEmpty || content.length > 2000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.isEn
+                ? 'Post content must contain 1–2000 characters.'
+                : 'Nội dung bài viết phải từ 1–2000 ký tự.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
 
     final user = FirebaseAuth.instance.currentUser;
@@ -332,9 +405,13 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
       await FirebaseFirestore.instance.collection('posts').add({
         'userId': user?.uid ?? 'unknown',
         'userName': userName,
-        'content': _contentCtrl.text.trim(),
+        'content': content,
         'tag': _selectedTag,
-        'imageUrl': _imageCtrl.text.trim(),
+        'imageUrl': '',
+        'imageData': _selectedImage == null
+            ? ''
+            : base64Encode(_selectedImage!),
+        'photoUrl': user?.photoURL ?? '',
         'likes': 0,
         'dislikes': 0,
         'comments': 0,
@@ -350,6 +427,31 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
         ).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
       }
     }
+  }
+
+  Future<void> _pickPostImage() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 35,
+      maxWidth: 1280,
+    );
+    if (image == null) return;
+    final bytes = await image.readAsBytes();
+    if (bytes.length > 600000) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.isEn
+                  ? 'Please choose a smaller image.'
+                  : 'Vui lòng chọn ảnh nhẹ hơn.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (mounted) setState(() => _selectedImage = bytes);
   }
 
   @override
@@ -388,7 +490,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey),
+                icon: const Icon(AppIcons.close, color: Colors.grey),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -433,11 +535,12 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedTag,
+                        borderRadius: BorderRadius.circular(16),
                         dropdownColor: widget.isDark
                             ? Colors.grey.shade900
                             : Colors.white,
                         icon: Icon(
-                          Icons.arrow_drop_down,
+                          AppIcons.arrowDropDown,
                           size: 16,
                           color: widget.isDark
                               ? Colors.white70
@@ -480,23 +583,57 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
               hintStyle: TextStyle(color: hintColor, fontSize: 18),
             ),
           ),
-          TextField(
-            controller: _imageCtrl,
-            style: TextStyle(color: textColor),
-            decoration: InputDecoration(
-              hintText: widget.isEn
-                  ? "Add an image URL"
-                  : "Chọn ảnh (Dán link URL)",
-              prefixIcon: const Icon(Icons.image, color: Colors.green),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+          Material(
+            color: widget.isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _pickPostImage,
+              child: Container(
+                width: double.infinity,
+                height: _selectedImage == null ? 72 : 150,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: widget.isDark ? Colors.white12 : Colors.black12,
+                  ),
+                ),
+                child: _selectedImage == null
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            AppIcons.addPhotoAlternateOutlined,
+                            color: Colors.blueAccent,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            widget.isEn
+                                ? 'Choose a photo'
+                                : 'Chọn ảnh từ thiết bị',
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(_selectedImage!, fit: BoxFit.cover),
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: IconButton.filled(
+                              onPressed: () =>
+                                  setState(() => _selectedImage = null),
+                              icon: const Icon(AppIcons.close),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
-              filled: true,
-              fillColor: widget.isDark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
           ),
           const SizedBox(height: 20),
@@ -557,6 +694,95 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _reportPost() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('reports').add({
+      'reporterId': user.uid,
+      'targetType': 'post',
+      'targetId': widget.postDoc.id,
+      'reason': 'inappropriate',
+      'status': 'open',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    _message(
+      widget.isEn
+          ? 'Report sent for review.'
+          : 'Đã gửi báo cáo để quản trị viên xem xét.',
+    );
+  }
+
+  Future<void> _deletePost() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(widget.isEn ? 'Delete post?' : 'Xóa bài viết?'),
+        content: Text(
+          widget.isEn
+              ? 'This action cannot be undone.'
+              : 'Thao tác này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(widget.isEn ? 'Cancel' : 'Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(widget.isEn ? 'Delete' : 'Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await widget.postDoc.reference.delete();
+      _message(widget.isEn ? 'Post deleted.' : 'Đã xóa bài viết.');
+    }
+  }
+
+  Future<void> _editPost() async {
+    final data = widget.postDoc.data() as Map<String, dynamic>;
+    final controller = TextEditingController(
+      text: data['content'] as String? ?? '',
+    );
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(widget.isEn ? 'Edit post' : 'Sửa bài viết'),
+        content: TextField(
+          controller: controller,
+          minLines: 3,
+          maxLines: 8,
+          maxLength: 2000,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(widget.isEn ? 'Cancel' : 'Hủy'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(widget.isEn ? 'Save' : 'Lưu'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result != null && result.isNotEmpty && result.length <= 2000) {
+      await widget.postDoc.reference.update({
+        'content': result,
+        'editedAt': FieldValue.serverTimestamp(),
+      });
+      _message(widget.isEn ? 'Post updated.' : 'Đã cập nhật bài viết.');
+    }
+  }
+
   String _getTimeAgo(Timestamp? timestamp) {
     if (timestamp == null) return widget.isEn ? "Just now" : "Vừa xong";
     Duration diff = DateTime.now().difference(timestamp.toDate());
@@ -592,89 +818,86 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  Future<void> _toggleLike() async {
+  Future<void> _toggleLike() => _toggleReaction(true);
+
+  Future<void> _toggleDislike() => _toggleReaction(false);
+
+  Future<void> _toggleReaction(bool like) async {
     final user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid;
-    final userName =
-        user?.displayName ?? user?.email?.split('@')[0] ?? "Một người dùng";
-    if (uid == null) return;
-
-    var data = widget.postDoc.data() as Map<String, dynamic>;
-    List<dynamic> likedBy = data['likedBy'] ?? [];
-    List<dynamic> dislikedBy = data['dislikedBy'] ?? [];
-
-    bool currentlyLiked = likedBy.contains(uid);
-    bool currentlyDisliked = dislikedBy.contains(uid);
-
-    final docRef = FirebaseFirestore.instance
-        .collection('posts')
-        .doc(widget.postDoc.id);
-    String postOwnerId = data['userId'] ?? 'unknown';
-
-    if (currentlyLiked) {
-      await docRef.update({
-        'likedBy': FieldValue.arrayRemove([uid]),
-        'likes': FieldValue.increment(-1),
-      });
-    } else {
-      var updates = <String, dynamic>{
-        'likedBy': FieldValue.arrayUnion([uid]),
-        'likes': FieldValue.increment(1),
-      };
-      if (currentlyDisliked) {
-        updates['dislikedBy'] = FieldValue.arrayRemove([uid]);
-        updates['dislikes'] = FieldValue.increment(-1);
-      }
-      await docRef.update(updates);
-
-      if (postOwnerId != uid && postOwnerId != 'unknown') {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(postOwnerId)
-            .collection('notifications')
-            .add({
-              'title': widget.isEn ? 'New Like ❤️' : 'Lượt thích mới ❤️',
-              'body': widget.isEn
-                  ? '$userName liked your post.'
-                  : '$userName vừa thích bài viết của bạn.',
-              'type': 'like',
-              'isRead': false,
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+    if (user == null) return;
+    try {
+      await CommunityStore.toggleReaction(
+        widget.postDoc.reference,
+        user,
+        like: like,
+        isEn: widget.isEn,
+      );
+    } catch (_) {
+      if (mounted) {
+        _message(
+          widget.isEn
+              ? 'Could not update. Please retry.'
+              : 'Chưa cập nhật được. Vui lòng thử lại.',
+        );
       }
     }
   }
 
-  Future<void> _toggleDislike() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    var data = widget.postDoc.data() as Map<String, dynamic>;
-    List<dynamic> likedBy = data['likedBy'] ?? [];
-    List<dynamic> dislikedBy = data['dislikedBy'] ?? [];
-
-    bool currentlyLiked = likedBy.contains(uid);
-    bool currentlyDisliked = dislikedBy.contains(uid);
-
-    final docRef = FirebaseFirestore.instance
-        .collection('posts')
-        .doc(widget.postDoc.id);
-
-    if (currentlyDisliked) {
-      await docRef.update({
-        'dislikedBy': FieldValue.arrayRemove([uid]),
-        'dislikes': FieldValue.increment(-1),
+  Future<void> _handleCommentAction(
+    String action,
+    DocumentSnapshot commentDoc,
+    Map<String, dynamic> comment,
+  ) async {
+    if (action == 'report') {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      await FirebaseFirestore.instance.collection('reports').add({
+        'reporterId': uid,
+        'targetType': 'comment',
+        'targetId': commentDoc.id,
+        'postId': widget.postDoc.id,
+        'reason': 'inappropriate',
+        'status': 'open',
+        'createdAt': FieldValue.serverTimestamp(),
       });
-    } else {
-      var updates = <String, dynamic>{
-        'dislikedBy': FieldValue.arrayUnion([uid]),
-        'dislikes': FieldValue.increment(1),
-      };
-      if (currentlyLiked) {
-        updates['likedBy'] = FieldValue.arrayRemove([uid]);
-        updates['likes'] = FieldValue.increment(-1);
-      }
-      await docRef.update(updates);
+      _message(widget.isEn ? 'Report sent for review.' : 'Đã gửi báo cáo.');
+      return;
+    }
+    if (action == 'delete') {
+      await CommunityStore.deleteComment(commentDoc.reference);
+      return;
+    }
+    final controller = TextEditingController(
+      text: comment['content'] as String? ?? '',
+    );
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(widget.isEn ? 'Edit comment' : 'Sửa bình luận'),
+        content: TextField(
+          controller: controller,
+          maxLength: 1000,
+          maxLines: 5,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(widget.isEn ? 'Cancel' : 'Hủy'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(widget.isEn ? 'Save' : 'Lưu'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null && value.isNotEmpty && value.length <= 1000) {
+      await commentDoc.reference.update({
+        'content': value,
+        'editedAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 
@@ -727,6 +950,15 @@ class _PostCardState extends State<PostCard> {
                         ),
                       );
                     }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          widget.isEn
+                              ? 'Could not load comments.'
+                              : 'Không thể tải bình luận.',
+                        ),
+                      );
+                    }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return Center(
                         child: Text(
@@ -742,9 +974,16 @@ class _PostCardState extends State<PostCard> {
                     return ListView.builder(
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
-                        var comment =
-                            snapshot.data!.docs[index].data()
-                                as Map<String, dynamic>;
+                        final commentDoc = snapshot.data!.docs[index];
+                        var comment = commentDoc.data() as Map<String, dynamic>;
+                        final currentUid =
+                            FirebaseAuth.instance.currentUser?.uid;
+                        final canManage =
+                            currentUid == comment['userId'] ||
+                            currentUid ==
+                                (widget.postDoc.data()
+                                    as Map<String, dynamic>)['userId'] ||
+                            context.read<AppProvider>().isAdmin;
                         String timeAgo = _getTimeAgo(
                           comment['createdAt'] as Timestamp?,
                         );
@@ -796,12 +1035,56 @@ class _PostCardState extends State<PostCard> {
                                                   : Colors.black87,
                                             ),
                                           ),
-                                          Text(
-                                            timeAgo,
-                                            style: TextStyle(
-                                              color: Colors.grey.shade500,
-                                              fontSize: 11,
-                                            ),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                timeAgo,
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade500,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                              PopupMenuButton<String>(
+                                                padding: EdgeInsets.zero,
+                                                onSelected: (value) =>
+                                                    _handleCommentAction(
+                                                      value,
+                                                      commentDoc,
+                                                      comment,
+                                                    ),
+                                                itemBuilder: (_) => [
+                                                  if (currentUid ==
+                                                      comment['userId'])
+                                                    PopupMenuItem(
+                                                      value: 'edit',
+                                                      child: Text(
+                                                        widget.isEn
+                                                            ? 'Edit'
+                                                            : 'Sửa',
+                                                      ),
+                                                    ),
+                                                  if (canManage)
+                                                    PopupMenuItem(
+                                                      value: 'delete',
+                                                      child: Text(
+                                                        widget.isEn
+                                                            ? 'Delete'
+                                                            : 'Xóa',
+                                                      ),
+                                                    ),
+                                                  if (!canManage)
+                                                    PopupMenuItem(
+                                                      value: 'report',
+                                                      child: Text(
+                                                        widget.isEn
+                                                            ? 'Report'
+                                                            : 'Báo cáo',
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -831,6 +1114,7 @@ class _PostCardState extends State<PostCard> {
               const SizedBox(height: 10),
               TextField(
                 controller: commentCtrl,
+                maxLength: 1000,
                 style: TextStyle(
                   color: widget.isDark ? Colors.white : Colors.black87,
                 ),
@@ -844,54 +1128,32 @@ class _PostCardState extends State<PostCard> {
                         : Colors.grey.shade400,
                   ),
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blueAccent),
+                    icon: const Icon(AppIcons.send, color: Colors.blueAccent),
                     onPressed: () async {
-                      if (commentCtrl.text.trim().isEmpty) return;
+                      if (commentCtrl.text.trim().isEmpty ||
+                          commentCtrl.text.trim().length > 1000) {
+                        return;
+                      }
 
                       final user = FirebaseAuth.instance.currentUser;
-                      String userName =
-                          user?.displayName ??
-                          user?.email?.split('@')[0] ??
-                          "Người dùng ẩn danh";
-                      String text = commentCtrl.text.trim();
+                      if (user == null) return;
+                      final text = commentCtrl.text.trim();
                       commentCtrl.clear();
-
-                      await FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(widget.postDoc.id)
-                          .collection('comments')
-                          .add({
-                            'userName': userName,
-                            'content': text,
-                            'createdAt': FieldValue.serverTimestamp(),
-                          });
-
-                      await FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(widget.postDoc.id)
-                          .update({'comments': FieldValue.increment(1)});
-
-                      var postData =
-                          widget.postDoc.data() as Map<String, dynamic>;
-                      String postOwnerId = postData['userId'] ?? 'unknown';
-
-                      if (postOwnerId != user?.uid &&
-                          postOwnerId != 'unknown') {
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(postOwnerId)
-                            .collection('notifications')
-                            .add({
-                              'title': widget.isEn
-                                  ? 'New Comment 💬'
-                                  : 'Bình luận mới 💬',
-                              'body': widget.isEn
-                                  ? '$userName commented: "$text"'
-                                  : '$userName đã bình luận: "$text"',
-                              'type': 'comment',
-                              'isRead': false,
-                              'createdAt': FieldValue.serverTimestamp(),
-                            });
+                      try {
+                        await CommunityStore.addComment(
+                          widget.postDoc.reference,
+                          user,
+                          text,
+                          isEn: widget.isEn,
+                        );
+                      } catch (_) {
+                        if (mounted) {
+                          _message(
+                            widget.isEn
+                                ? 'Comment was not sent. Please retry.'
+                                : 'Chưa gửi được bình luận. Vui lòng thử lại.',
+                          );
+                        }
                       }
                     },
                   ),
@@ -918,6 +1180,7 @@ class _PostCardState extends State<PostCard> {
     var data = widget.postDoc.data() as Map<String, dynamic>;
     String timeAgo = _getTimeAgo(data['createdAt'] as Timestamp?);
     String imageUrl = data['imageUrl'] ?? '';
+    final imageData = data['imageData'] as String? ?? '';
 
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     List<dynamic> likedBy = data['likedBy'] ?? [];
@@ -928,6 +1191,13 @@ class _PostCardState extends State<PostCard> {
 
     int likes = data['likes'] ?? 0;
     int dislikes = data['dislikes'] ?? 0;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final isOwner = currentUid != null && currentUid == data['userId'];
+    final isAdmin = context.watch<AppProvider>().isAdmin;
+    final userName = (data['userName'] as String?)?.trim().isNotEmpty == true
+        ? data['userName'] as String
+        : (widget.isEn ? 'User' : 'Người dùng');
+    final photoUrl = data['photoUrl'] as String? ?? '';
 
     final cardColor = glassSurfaceColor(context);
     final textColor = widget.isDark ? Colors.white : Colors.black87;
@@ -956,14 +1226,19 @@ class _PostCardState extends State<PostCard> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.blue.withValues(alpha: 0.2),
-                child: Text(
-                  data['userName'][0].toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueAccent,
-                    fontSize: 16,
-                  ),
-                ),
+                backgroundImage: photoUrl.isNotEmpty
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: photoUrl.isEmpty
+                    ? Text(
+                        userName[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueAccent,
+                          fontSize: 16,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -971,7 +1246,7 @@ class _PostCardState extends State<PostCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data['userName'],
+                      userName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -989,7 +1264,11 @@ class _PostCardState extends State<PostCard> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.public, size: 12, color: Colors.grey),
+                        const Icon(
+                          AppIcons.public,
+                          size: 12,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                   ],
@@ -1013,6 +1292,39 @@ class _PostCardState extends State<PostCard> {
                   ),
                 ),
               ),
+              PopupMenuButton<String>(
+                tooltip: widget.isEn ? 'Post options' : 'Tùy chọn bài viết',
+                onSelected: (value) async {
+                  try {
+                    if (value == 'edit') await _editPost();
+                    if (value == 'delete') await _deletePost();
+                    if (value == 'report') await _reportPost();
+                  } catch (_) {
+                    _message(
+                      widget.isEn
+                          ? 'The action failed. Please try again.'
+                          : 'Thao tác thất bại. Vui lòng thử lại.',
+                    );
+                  }
+                },
+                itemBuilder: (_) => [
+                  if (isOwner)
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(widget.isEn ? 'Edit' : 'Sửa'),
+                    ),
+                  if (isOwner || isAdmin)
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(widget.isEn ? 'Delete' : 'Xóa'),
+                    ),
+                  if (!isOwner)
+                    PopupMenuItem(
+                      value: 'report',
+                      child: Text(widget.isEn ? 'Report' : 'Báo cáo'),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -1021,16 +1333,22 @@ class _PostCardState extends State<PostCard> {
             style: TextStyle(fontSize: 15, color: textColor, height: 1.5),
           ),
 
-          if (imageUrl.isNotEmpty) ...[
+          if (imageUrl.isNotEmpty || imageData.isNotEmpty) ...[
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.network(
-                imageUrl,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => const SizedBox.shrink(),
-              ),
+              child: imageData.isNotEmpty
+                  ? Image.memory(
+                      base64Decode(imageData),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                    ),
             ),
           ],
 
@@ -1047,7 +1365,7 @@ class _PostCardState extends State<PostCard> {
                 children: [
                   IconButton(
                     icon: Icon(
-                      isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                      isLiked ? AppIcons.thumbUp : AppIcons.thumbUpAltOutlined,
                       color: isLiked ? Colors.blueAccent : Colors.grey.shade500,
                       size: 20,
                     ),
@@ -1066,8 +1384,8 @@ class _PostCardState extends State<PostCard> {
                   IconButton(
                     icon: Icon(
                       isDisliked
-                          ? Icons.thumb_down
-                          : Icons.thumb_down_alt_outlined,
+                          ? AppIcons.thumbDown
+                          : AppIcons.thumbDownAltOutlined,
                       color: isDisliked
                           ? Colors.redAccent
                           : Colors.grey.shade500,
@@ -1088,7 +1406,7 @@ class _PostCardState extends State<PostCard> {
               ),
               TextButton.icon(
                 icon: Icon(
-                  Icons.chat_bubble_outline,
+                  AppIcons.chatBubbleOutline,
                   size: 20,
                   color: Colors.grey.shade500,
                 ),
@@ -1103,21 +1421,14 @@ class _PostCardState extends State<PostCard> {
               ),
               IconButton(
                 icon: Icon(
-                  Icons.share_outlined,
+                  AppIcons.shareOutlined,
                   size: 20,
                   color: Colors.grey.shade500,
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        widget.isEn
-                            ? 'Sharing post...'
-                            : 'Đang chia sẻ bài viết...',
-                      ),
-                    ),
-                  );
-                },
+                onPressed: null,
+                tooltip: widget.isEn
+                    ? 'Sharing is coming soon'
+                    : 'Chia sẻ sắp ra mắt',
               ),
             ],
           ),

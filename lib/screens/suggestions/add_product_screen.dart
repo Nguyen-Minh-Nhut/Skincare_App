@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -74,19 +75,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đã thêm sản phẩm lên kệ thành công! 🎉'),
-            backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context); // Lưu xong quay về trang Suggestions
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi rồi Nhựt ơi: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi rồi Nhựt ơi: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -114,17 +111,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     _buildTextField(
                       _nameController,
                       "Tên sản phẩm",
-                      Icons.shopping_bag_outlined,
+                      AppIcons.shoppingBagOutlined,
                     ),
                     _buildTextField(
                       _priceController,
                       "Giá bán (VD: 350.000đ)",
-                      Icons.payments_outlined,
+                      AppIcons.paymentsOutlined,
                     ),
                     _buildTextField(
                       _imageController,
                       "Link ảnh (GitHub Raw)",
-                      Icons.image_outlined,
+                      AppIcons.imageOutlined,
                     ),
 
                     const SizedBox(height: 15),
@@ -133,7 +130,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       initialValue: _selectedCategory,
                       decoration: InputDecoration(
                         labelText: "Danh mục",
-                        prefixIcon: const Icon(Icons.category_outlined),
+                        prefixIcon: const Icon(AppIcons.categoryOutlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -154,7 +151,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: _buildTextField(
                             _ratingController,
                             "Rating",
-                            Icons.star_outline,
+                            AppIcons.starOutline,
                             isNumber: true,
                           ),
                         ),
@@ -163,7 +160,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: _buildTextField(
                             _matchController,
                             "% Hợp da",
-                            Icons.favorite_outline,
+                            AppIcons.favoriteOutline,
                             isNumber: true,
                           ),
                         ),
@@ -173,7 +170,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     _buildTextField(
                       _descController,
                       "Mô tả sản phẩm",
-                      Icons.description_outlined,
+                      AppIcons.descriptionOutlined,
                       maxLines: 4,
                     ),
 

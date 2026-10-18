@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -159,16 +160,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ? 'Profile updated successfully!'
                   : 'Đã cập nhật hồ sơ thành công!',
             ),
-            backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -200,168 +200,176 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         foregroundColor: textColor,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
 
-            // =====================================
-            // AVATAR NẰM GIỮA MÀN HÌNH
-            // =====================================
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 65,
-                      backgroundColor: isDark
-                          ? Colors.blue.withValues(alpha: 0.15)
-                          : Colors.blue.shade50,
-                      backgroundImage: _avatarBase64 != null
-                          ? MemoryImage(base64Decode(_avatarBase64!))
-                          : null,
-                      child: _avatarBase64 == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.blueAccent,
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: CircleAvatar(
-                        backgroundColor: bgColor,
-                        radius: 20,
+              // =====================================
+              // AVATAR NẰM GIỮA MÀN HÌNH
+              // =====================================
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 54,
+                        backgroundColor: isDark
+                            ? Colors.blue.withValues(alpha: 0.15)
+                            : Colors.blue.shade50,
+                        backgroundImage: _avatarBase64 != null
+                            ? MemoryImage(base64Decode(_avatarBase64!))
+                            : null,
+                        child: _avatarBase64 == null
+                            ? const Icon(
+                                AppIcons.person,
+                                size: 50,
+                                color: Colors.blueAccent,
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
                         child: CircleAvatar(
-                          backgroundColor: isDark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade200,
-                          radius: 17,
-                          child: Icon(
-                            Icons.camera_alt,
-                            size: 18,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                          backgroundColor: bgColor,
+                          radius: 20,
+                          child: CircleAvatar(
+                            backgroundColor: isDark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade200,
+                            radius: 17,
+                            child: Icon(
+                              AppIcons.cameraAlt,
+                              size: 18,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  isEn ? "Personal Information" : "Thông tin cá nhân",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    _buildFBInputTile(
+                      isEn ? "Full Name" : "Họ và tên",
+                      AppIcons.person,
+                      _nameController,
+                      hint: isEn ? "Enter your name" : "Nhập họ và tên...",
+                      textColor: textColor,
+                      iconColor: iconColor,
+                      hintColor: hintColor,
                     ),
+                    _buildFBInputTile(
+                      isEn ? "Phone Number" : "Số điện thoại",
+                      AppIcons.phone,
+                      _phoneController,
+                      keyboardType: TextInputType.phone,
+                      hint: isEn
+                          ? "Enter phone number"
+                          : "Nhập số điện thoại...",
+                      textColor: textColor,
+                      iconColor: iconColor,
+                      hintColor: hintColor,
+                    ),
+                    _buildFBInputTile(
+                      isEn ? "Date of Birth" : "Ngày sinh",
+                      AppIcons.cake,
+                      _dobController,
+                      hint: "DD/MM/YYYY",
+                      textColor: textColor,
+                      iconColor: iconColor,
+                      hintColor: hintColor,
+                    ),
+
+                    _buildFBDropdownTile(
+                      isEn ? "Gender" : "Giới tính",
+                      AppIcons.transgender,
+                      _selectedGender,
+                      _genders,
+                      (val) => setState(() => _selectedGender = val!),
+                      isEn,
+                      isDark,
+                      textColor,
+                      iconColor,
+                    ),
+                    _buildFBDropdownTile(
+                      isEn ? "Skin Type" : "Loại da",
+                      AppIcons.faceRetouchingNatural,
+                      _selectedSkinType,
+                      _skinTypes,
+                      (val) => setState(() => _selectedSkinType = val!),
+                      isEn,
+                      isDark,
+                      textColor,
+                      iconColor,
+                      isSkinType: true,
+                    ),
+
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : () => _saveProfile(isEn),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                isEn ? 'Save Changes' : 'Lưu thay đổi',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
-
-            const SizedBox(height: 40),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                isEn ? "Personal Information" : "Thông tin cá nhân",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  _buildFBInputTile(
-                    isEn ? "Full Name" : "Họ và tên",
-                    Icons.person,
-                    _nameController,
-                    hint: isEn ? "Enter your name" : "Nhập họ và tên...",
-                    textColor: textColor,
-                    iconColor: iconColor,
-                    hintColor: hintColor,
-                  ),
-                  _buildFBInputTile(
-                    isEn ? "Phone Number" : "Số điện thoại",
-                    Icons.phone,
-                    _phoneController,
-                    keyboardType: TextInputType.phone,
-                    hint: isEn ? "Enter phone number" : "Nhập số điện thoại...",
-                    textColor: textColor,
-                    iconColor: iconColor,
-                    hintColor: hintColor,
-                  ),
-                  _buildFBInputTile(
-                    isEn ? "Date of Birth" : "Ngày sinh",
-                    Icons.cake,
-                    _dobController,
-                    hint: "DD/MM/YYYY",
-                    textColor: textColor,
-                    iconColor: iconColor,
-                    hintColor: hintColor,
-                  ),
-
-                  _buildFBDropdownTile(
-                    isEn ? "Gender" : "Giới tính",
-                    Icons.transgender,
-                    _selectedGender,
-                    _genders,
-                    (val) => setState(() => _selectedGender = val!),
-                    isEn,
-                    isDark,
-                    textColor,
-                    iconColor,
-                  ),
-                  _buildFBDropdownTile(
-                    isEn ? "Skin Type" : "Loại da",
-                    Icons.face_retouching_natural,
-                    _selectedSkinType,
-                    _skinTypes,
-                    (val) => setState(() => _selectedSkinType = val!),
-                    isEn,
-                    isDark,
-                    textColor,
-                    iconColor,
-                    isSkinType: true,
-                  ),
-
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : () => _saveProfile(isEn),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              isEn ? 'Save Changes' : 'Lưu thay đổi',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -377,8 +385,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required Color iconColor,
     required Color hintColor,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: glassSurfaceColor(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: glassBorderColor(context)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -411,7 +425,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ],
             ),
           ),
-          Icon(Icons.edit, color: iconColor.withValues(alpha: 0.5), size: 20),
+          Icon(
+            AppIcons.editOutlined,
+            color: Colors.blueAccent.withValues(alpha: 0.75),
+            size: 19,
+          ),
         ],
       ),
     );
@@ -429,8 +447,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Color iconColor, {
     bool isSkinType = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: glassSurfaceColor(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: glassBorderColor(context)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -481,7 +505,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ],
             ),
           ),
-          Icon(Icons.edit, color: iconColor.withValues(alpha: 0.5), size: 20),
+          Icon(
+            AppIcons.keyboardArrowDownRounded,
+            color: Colors.blueAccent.withValues(alpha: 0.75),
+          ),
         ],
       ),
     );

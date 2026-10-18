@@ -20,12 +20,14 @@ class GlassSurface extends StatelessWidget {
     required this.child,
     this.borderRadius = const BorderRadius.all(Radius.circular(24)),
     this.padding,
+    this.margin,
     this.opacity,
   });
 
   final Widget child;
   final BorderRadius borderRadius;
   final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
   final double? opacity;
 
   @override
@@ -34,6 +36,7 @@ class GlassSurface extends StatelessWidget {
     child: BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
       child: Container(
+        margin: margin,
         padding: padding,
         decoration: BoxDecoration(
           color: glassSurfaceColor(context, opacity: opacity),

@@ -74,6 +74,23 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
         ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.white.withValues(alpha: 0.88),
+          contentTextStyle: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          elevation: 10,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.72)),
+          ),
+          showCloseIcon: true,
+          closeIconColor: Colors.black54,
+          actionTextColor: Colors.blueAccent,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.black87,
@@ -162,6 +179,23 @@ class MyApp extends StatelessWidget {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF171B27).withValues(alpha: 0.88),
+          contentTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          elevation: 10,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          showCloseIcon: true,
+          closeIconColor: Colors.white70,
+          actionTextColor: Colors.lightBlueAccent,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,

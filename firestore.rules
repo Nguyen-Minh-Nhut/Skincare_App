@@ -1,0 +1,206 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.get('admin', false) == true;
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && uid() == userId;
+    }
+
+    function ownReaction(before, after) {
+      return after is list && after.size() == after.toSet().size()
+        && after.toSet().difference(before.toSet()).hasOnly([uid()])
+        && before.toSet().difference(after.toSet()).hasOnly([uid()]);
+    }
+
+    function validReaction() {
+      let next = request.resource.data;
+      return next.diff(resource.data).affectedKeys().hasOnly([
+          'likes', 'dislikes', 'likedBy', 'dislikedBy'
+        ])
+        && ownReaction(resource.data.likedBy, next.likedBy)
+        && ownReaction(resource.data.dislikedBy, next.dislikedBy)
+        && next.likes == next.likedBy.size()
+        && next.dislikes == next.dislikedBy.size()
+        && !next.likedBy.toSet().hasAny(next.dislikedBy);
+    }
+
+    function validCommentCount(postId) {
+      let next = request.resource.data;
+      let path = /databases/$(database)/documents/posts/$(postId)/comments/$(next.lastCommentId);
+      return next.diff(resource.data).affectedKeys().hasOnly(['comments', 'lastCommentId'])
+        && next.comments >= 0
+        && ((!exists(path) && existsAfter(path)
+            && getAfter(path).data.userId == uid()
+            && next.comments == resource.data.comments + 1)
+          || (exists(path) && !existsAfter(path)
+            && next.comments == resource.data.comments - 1));
+    }
+
+    function commentCountChanged(postId, commentId, delta) {
+      let path = /databases/$(database)/documents/posts/$(postId);
+      return getAfter(path).data.lastCommentId == commentId
+        && getAfter(path).data.comments == get(path).data.comments + delta;
+    }
+
+    function validNotification(userId, notificationId) {
+      let data = request.resource.data;
+      let post = /databases/$(database)/documents/posts/$(data.postId);
+      let comment = /databases/$(database)/documents/posts/$(data.postId)/comments/$(data.commentId);
+      return data.keys().hasOnly([
+          'title', 'body', 'type', 'isRead', 'createdAt', 'actorId', 'postId', 'commentId'
+        ])
+        && data.actorId == uid() && userId != uid()
+        && getAfter(post).data.userId == userId
+        && data.isRead == false && data.createdAt == request.time
+        && data.title is string && data.title.size() <= 100
+        && data.body is string && data.body.size() <= 2200
+        && ((data.type == 'like'
+            && notificationId == 'like_' + data.postId + '_' + uid()
+            && !exists(/databases/$(database)/documents/posts/$(data.postId)/likeReceipts/$(uid()))
+            && existsAfter(/databases/$(database)/documents/posts/$(data.postId)/likeReceipts/$(uid()))
+            && !(uid() in get(post).data.likedBy)
+            && uid() in getAfter(post).data.likedBy)
+          || (data.type == 'comment'
+            && notificationId == 'comment_' + data.commentId
+            && !exists(comment) && existsAfter(comment)
+            && getAfter(comment).data.userId == uid()));
+    }
+
+    match /users/{userId} {
+      allow get, delete: if ownsUser(userId);
+      allow create, update: if ownsUser(userId)
+        && request.resource.data.uid == userId;
+      allow list: if false;
+
+      match /wardrobe/{itemId} {
+        allow read, write: if ownsUser(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow read, delete: if ownsUser(userId);
+        allow update: if ownsUser(userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
+          && request.resource.data.isRead is bool;
+        allow create: if signedIn() && validNotification(userId, notificationId);
+      }
+    }
+
+    match /usernames/{username} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.uid == uid()
+        && username.size() >= 3
+        && username.size() <= 30;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == uid()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'userName', 'content', 'tag', 'imageUrl', 'likes',
+          'dislikes', 'comments', 'likedBy', 'dislikedBy', 'createdAt',
+          'photoUrl', 'imageData'
+        ])
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 5000
+        && request.resource.data.likes == 0
+        && request.resource.data.dislikes == 0
+        && request.resource.data.comments == 0
+        && request.resource.data.likedBy is list
+        && request.resource.data.dislikedBy is list
+        && request.resource.data.likedBy.size() == 0
+        && request.resource.data.dislikedBy.size() == 0;
+      allow update: if signedIn() && (
+        isAdmin()
+        ||
+        (resource.data.userId == uid()
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'content', 'tag', 'imageUrl', 'editedAt'
+          ]))
+        || validReaction() || validCommentCount(postId)
+      );
+      allow delete: if signedIn() && (resource.data.userId == uid() || isAdmin());
+
+      match /likeReceipts/{actorId} {
+        allow get: if signedIn() && actorId == uid();
+        allow create: if signedIn() && actorId == uid()
+          && request.resource.data.keys().hasOnly(['createdAt'])
+          && request.resource.data.createdAt == request.time
+          && uid() in getAfter(/databases/$(database)/documents/posts/$(postId)).data.likedBy;
+        allow update, delete, list: if false;
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == uid()
+          && request.resource.data.keys().hasOnly([
+            'userId', 'userName', 'content', 'createdAt', 'photoUrl'
+          ])
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 2000
+          && commentCountChanged(postId, commentId, 1);
+        allow update: if signedIn() && (
+          isAdmin()
+          || (resource.data.userId == uid()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'content', 'editedAt'
+            ]))
+        );
+        allow delete: if signedIn() && (
+          resource.data.userId == uid()
+          || get(/databases/$(database)/documents/posts/$(postId)).data.userId == uid()
+          || isAdmin()
+        ) && commentCountChanged(postId, commentId, -1);
+      }
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporterId == uid()
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly([
+          'reporterId', 'targetType', 'targetId', 'postId', 'reason', 'status', 'createdAt'
+        ]);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /adminLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /tips/{tipId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

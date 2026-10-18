@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 
 import '../home/scan_history.dart';
 
@@ -75,7 +76,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(_date(scan.createdAt)),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const Icon(AppIcons.chevronRight),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(

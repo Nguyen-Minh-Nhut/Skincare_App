@@ -1,0 +1,39 @@
+{
+  "hosting": {
+    "site": "myapp-7f561-auth",
+    "public": "auth_web",
+    "ignore": [
+      "**/.*",
+      "tests/**",
+      "package*.json"
+    ],
+    "cleanUrls": true,
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://identitytoolkit.googleapis.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+          }
+        ]
+      }
+    ]
+  }
+}

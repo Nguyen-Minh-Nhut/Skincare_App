@@ -12,6 +12,33 @@
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.990557377111-gpmrhtdhv2uv27bleagceh6so9rvjotr</string>
+					<string>fb964346813363293</string>
+				</array>
+			</dict>
+		</array>
+        <key>FacebookAppID</key>
+        <string>964346813363293</string>
+        <key>FacebookClientToken</key>
+        <string>a4051a02dcdcfd2f027dd1a934c8c0cd</string>
+        <key>FacebookDisplayName</key>
+        <string>Skincare App</string>
+        <key>FacebookAutoLogAppEventsEnabled</key>
+        <false/>
+        <key>FacebookAdvertiserIDCollectionEnabled</key>
+        <false/>
+        <key>LSApplicationQueriesSchemes</key>
+        <array>
+            <string>fbapi</string>
+            <string>fb-messenger-share-api</string>
+        </array>
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
@@ -26,6 +53,8 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Ứng dụng dùng vị trí hiện tại để hiển thị chỉ số UV chính xác tại khu vực của bạn.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

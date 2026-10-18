@@ -61,3 +61,52 @@ flutter run --profile -d emulator-5554 -t lib/benchmark_main.dart
 ## Lưu ý an toàn
 
 Ứng dụng là nguyên mẫu phục vụ học tập và nghiên cứu. Độ chính xác phụ thuộc dữ liệu huấn luyện, chất lượng ảnh, ánh sáng, thiết bị và đặc điểm da. Không sử dụng kết quả để tự chẩn đoán hoặc thay đổi phác đồ điều trị.
+
+## Kiểm thử quyền Firestore
+
+Bộ test chạy với project demo cục bộ, không dùng dữ liệu Firebase thật:
+
+```bash
+npm --prefix tests/firestore ci
+firebase emulators:exec --config firebase.test.json --only firestore --project demo-skincare-rules 'npm --prefix tests/firestore test'
+```
+
+Cần Node.js tương thích các thư viện trong `tests/firestore/package-lock.json`, Firebase CLI và Java để chạy emulator.
+
+### Triển khai thay đổi tương tác
+
+- App mới dùng transaction cho lượt thích và bình luận. Rules mới chỉ cho phép sửa tương tác của chính người đăng nhập; bộ đếm bình luận phải đi cùng thao tác thêm/xóa bình luận trong một commit.
+- Thông báo phải gắn với một tương tác hợp lệ trong cùng commit. Mỗi người chỉ tạo thông báo lượt thích đầu tiên cho một bài, được đánh dấu bằng `likeReceipts`.
+- Cần phát hành app và rules theo cùng kế hoạch: app cũ ghi bình luận/bộ đếm riêng sẽ bị rules mới từ chối; rules cũ chưa hỗ trợ `likeReceipts` và `lastCommentId` của app mới. Kiểm tra trên project staging trước khi chuyển người dùng sang bản mới.
+- Bộ test emulator không triển khai rules. Các APK có sẵn trong thư mục dự án chưa chứa thay đổi này.
+
+### Xóa tài khoản
+
+Xác thực lại bằng mật khẩu hoặc Google, dọn `wardrobe`, `notifications`, hồ sơ và tên đăng nhập; xóa lịch sử ảnh/chat của người dùng trên thiết bị hiện tại rồi mới xóa Firebase Auth. Nếu lỗi giữa chừng, giao diện báo chưa hoàn tất để người dùng thử lại. Quá trình này gồm nhiều bước nên một phần dữ liệu có thể đã bị xóa trước khi lỗi xảy ra.
+
+Bài viết/bình luận cộng đồng và lịch sử cục bộ trên các thiết bị khác không được xóa bởi luồng này; hộp thoại xác nhận nêu rõ phạm vi. Cần kiểm tra xác thực Google và xóa tài khoản bằng tài khoản thử nghiệm trên thiết bị thật trước khi phát hành.
+
+## Trang web đặt lại mật khẩu
+
+Hướng dẫn hoàn tất Firebase Console và thử lại bằng thư mới: [Cấu hình quên mật khẩu](deliverables/password-reset-setup.md). Rà soát ngày 19/09/2026: trang live và các asset khớp mã nguồn; 11 test Flutter và 7 test web/Auth emulator đều qua. Chưa xác nhận lại callback trong cấu hình quản trị production.
+
+- Mã nguồn: `auth_web/` (HTML/CSS/JavaScript, logo dùng lại từ app).
+- Hosting riêng: `myapp-7f561-auth`, cùng project `myapp-7f561`; website ở Hosting mặc định không bị thay thế.
+- URL: `https://myapp-7f561-auth.web.app/reset-password`.
+- Trang xác minh `oobCode` trước khi cho đặt mật khẩu, xử lý link hết hạn/đã dùng, lỗi mạng và timeout. Có form yêu cầu link mới và giới hạn gửi lại 60 giây.
+- Firebase Auth REST được gọi trực tiếp, không tải SDK/CDN bên ngoài. API key phía web chỉ nhận diện project; không có thông tin đăng nhập quản trị trong trang.
+- Các email action khác được chuyển tiếp bằng nút tới trình xử lý Firebase gốc để giữ luồng xác minh email/khôi phục tài khoản.
+
+Kiểm thử với Firebase Auth emulator, không gửi thư thật:
+
+```bash
+firebase emulators:exec --config firebase.auth-test.json --only auth --project demo-skincare-auth 'node --test auth_web/tests/*.test.js'
+```
+
+Triển khai riêng trang này:
+
+```bash
+firebase deploy --only hosting --config firebase.auth-hosting.json --project myapp-7f561
+```
+
+Trạng thái cấu hình (15/09/2026): trang đã triển khai và miền `myapp-7f561-auth.web.app` đã được thêm vào Authorized domains. Firebase vẫn từ chối cập nhật callback bằng lỗi `EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`; email hiện vẫn dùng trang mặc định. Cần lưu thành công URL trên tại Firebase Authentication → Templates → Customize action URL để hoàn tất kết nối. Sau khi đổi cấu hình, yêu cầu một email mới từ app; email đã gửi trước đó vẫn chứa URL cũ. Link hết hạn/đã dùng không thể khôi phục bằng cách thay giao diện.

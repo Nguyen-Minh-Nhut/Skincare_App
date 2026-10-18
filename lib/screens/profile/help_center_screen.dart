@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:provider/provider.dart'; // THÊM PROVIDER
 
@@ -66,7 +67,7 @@ class HelpCenterScreen extends StatelessWidget {
               child: Column(
                 children: [
                   const Icon(
-                    Icons.support_agent,
+                    AppIcons.supportAgent,
                     color: Colors.white,
                     size: 50,
                   ),
@@ -83,13 +84,13 @@ class HelpCenterScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
                   _buildContactRow(
-                    Icons.phone,
+                    AppIcons.phone,
                     isEn ? "Toll-free Hotline:" : "Hotline (Miễn phí):",
                     "1900 9999",
                   ),
                   const Divider(color: Colors.white30, height: 20),
                   _buildContactRow(
-                    Icons.email,
+                    AppIcons.email,
                     isEn ? "Support Email:" : "Email hỗ trợ:",
                     "support@skincareapp.vn",
                   ),

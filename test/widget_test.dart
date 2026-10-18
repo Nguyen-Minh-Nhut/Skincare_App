@@ -44,4 +44,19 @@ void main() {
     expect(provider.isEnglish, isFalse);
     expect(preferences.getBool('isEnglish'), isFalse);
   });
+
+  test('AppProvider supports Korean and Simplified Chinese', () async {
+    SharedPreferences.setMockInitialValues({});
+    final provider = AppProvider();
+    await Future<void>.delayed(Duration.zero);
+
+    await provider.setLanguageCode('ko');
+    expect(provider.languageCode, 'ko');
+    expect(provider.isEnglish, isTrue);
+
+    await provider.setLanguageCode('zh-Hans');
+    final preferences = await SharedPreferences.getInstance();
+    expect(provider.languageCode, 'zh-Hans');
+    expect(preferences.getString('languageCode'), 'zh-Hans');
+  });
 }

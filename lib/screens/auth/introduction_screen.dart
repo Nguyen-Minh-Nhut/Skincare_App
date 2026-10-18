@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../main_screens.dart'; // Đổi đường dẫn cho đúng file MainScreen của sếp nhe
@@ -43,12 +44,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Lỗi lưu loại da: $e'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Lỗi lưu loại da: $e')));
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -70,7 +68,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               const Spacer(),
               // ICON VÀ LỜI GIỚI THIỆU APP
               const Icon(
-                Icons.auto_awesome,
+                AppIcons.autoAwesome,
                 size: 70,
                 color: Colors.blueAccent,
               ),

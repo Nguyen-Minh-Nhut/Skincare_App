@@ -1,0 +1,20 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {authRequest} from '../auth-api.js';
+test('Firebase emulator: valid link changes password, old password and reused link fail', {skip: !process.env.FIREBASE_AUTH_EMULATOR_HOST}, async () => {
+  const host = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  const options = {base:`http://${host}/identitytoolkit.googleapis.com/v1`, key:'demo-key'};
+  const email = `reset-${Date.now()}@example.test`;
+  await authRequest('signUp', {email,password:'OldTest-123!',returnSecureToken:true}, options);
+  await authRequest('sendOobCode', {requestType:'PASSWORD_RESET',email}, options);
+  const response = await fetch(`http://${host}/emulator/v1/projects/demo-skincare-auth/oobCodes`);
+  const {oobCodes} = await response.json();
+  const code = oobCodes.find(item => item.email === email).oobCode;
+  const verified = await authRequest('resetPassword', {oobCode:code}, options);
+  assert.equal(verified.email,email);
+  await authRequest('resetPassword', {oobCode:code,newPassword:'NewTest-456!'}, options);
+  const signedIn = await authRequest('signInWithPassword', {email,password:'NewTest-456!',returnSecureToken:true}, options);
+  assert.equal(signedIn.email,email);
+  await assert.rejects(authRequest('signInWithPassword', {email,password:'OldTest-123!',returnSecureToken:true}, options));
+  await assert.rejects(authRequest('resetPassword', {oobCode:code}, options), e=>e.code==='INVALID_OOB_CODE');
+});

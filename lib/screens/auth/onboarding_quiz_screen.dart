@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../main_screens.dart';
@@ -80,12 +81,9 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Lỗi lưu cấu hình: $e'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Lỗi lưu cấu hình: $e')));
           }
         } finally {
           if (mounted) setState(() => _isLoading = false);
@@ -154,7 +152,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         children: [
           IconButton(
             icon: const Icon(
-              Icons.arrow_back_ios,
+              AppIcons.arrowBackIos,
               size: 18,
               color: Colors.black87,
             ),
@@ -285,7 +283,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                           ),
                           if (isSelected)
                             const Icon(
-                              Icons.check_circle,
+                              AppIcons.checkCircle,
                               color: Colors.blueAccent,
                               size: 20,
                             ),

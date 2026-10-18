@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'package:provider/provider.dart';
 import 'app_provider.dart';
 import 'home/home_tag.dart';
 import 'suggestions/suggestions_tab.dart';
 import 'consult/consult_tab.dart';
 import 'profile/profile_tab.dart';
-import 'home/ai_camera_tab.dart';
+import '../widgets/feature_unavailable.dart';
 import 'dart:ui';
 
 enum AppTab { home, suggestions, camera, consult, profile }
@@ -31,7 +32,7 @@ class _MainScreenState extends State<MainScreen> {
       case AppTab.suggestions:
         return const SuggestionsTab();
       case AppTab.camera:
-        return const AiCameraTab();
+        return const FeatureUnavailableScreen();
       case AppTab.consult:
         return const ConsultTab();
       case AppTab.profile:
@@ -176,36 +177,36 @@ class _MainScreenState extends State<MainScreen> {
               Row(
                 children: [
                   _buildNavItem(
-                    Icons.home_outlined,
-                    Icons.home_rounded,
+                    AppIcons.homeOutlined,
+                    AppIcons.homeRounded,
                     AppTab.home,
                     inactiveIconColor,
                   ),
 
                   _buildNavItem(
-                    Icons.tips_and_updates_outlined,
-                    Icons.tips_and_updates_rounded,
+                    AppIcons.tipsAndUpdatesOutlined,
+                    AppIcons.tipsAndUpdatesRounded,
                     AppTab.suggestions,
                     inactiveIconColor,
                   ),
 
                   _buildNavItem(
-                    Icons.face_retouching_natural_outlined,
-                    Icons.face_retouching_natural_rounded,
+                    AppIcons.faceRetouchingNaturalOutlined,
+                    AppIcons.faceRetouchingNaturalRounded,
                     AppTab.camera,
                     inactiveIconColor,
                   ),
 
                   _buildNavItem(
-                    Icons.forum_outlined,
-                    Icons.forum_rounded,
+                    AppIcons.forumOutlined,
+                    AppIcons.forumRounded,
                     AppTab.consult,
                     inactiveIconColor,
                   ),
 
                   _buildNavItem(
-                    Icons.person_outline,
-                    Icons.person_rounded,
+                    AppIcons.personOutline,
+                    AppIcons.personRounded,
                     AppTab.profile,
                     inactiveIconColor,
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -15,35 +16,35 @@ class _PremiumScreenState extends State<PremiumScreen> {
       "title": "AI Skin Analysis Pro",
       "desc":
           "Không chỉ đếm mụn, AI phân tích sâu về độ ẩm, mức độ lão hóa và tình trạng lỗ chân lông.",
-      "icon": Icons.face_retouching_natural,
+      "icon": AppIcons.faceRetouchingNatural,
       "color": Colors.purpleAccent,
     },
     {
       "title": "Ingredient Checker",
       "desc":
           "Quét ảnh bảng thành phần mỹ phẩm. Nhận cảnh báo tức thì nếu có chất gây dị ứng với da bạn.",
-      "icon": Icons.document_scanner,
+      "icon": AppIcons.documentScanner,
       "color": Colors.teal,
     },
     {
       "title": "Routine Tracker & Reminders",
       "desc":
           "Lập lịch trình chi tiết. App sẽ nhắc nhở: \"Nhựt ơi, tối nay tới lịch dùng Retinol rồi đó!\".",
-      "icon": Icons.alarm_on,
+      "icon": AppIcons.alarmOn,
       "color": Colors.orangeAccent,
     },
     {
       "title": "Expert Video Call",
       "desc":
           "Kết nối Video Call trực tiếp 1-1 với bác sĩ da liễu và các chuyên gia hàng đầu.",
-      "icon": Icons.video_camera_front,
+      "icon": AppIcons.videoCameraFront,
       "color": Colors.blueAccent,
     },
     {
       "title": "Ad-free & Cloud Sync",
       "desc":
           "Trải nghiệm mượt mà không quảng cáo. Sao lưu toàn bộ nhật ký da lên mây vĩnh viễn.",
-      "icon": Icons.cloud_done,
+      "icon": AppIcons.cloudDone,
       "color": Colors.green,
     },
   ];
@@ -160,7 +161,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.workspace_premium,
+                  AppIcons.workspacePremium,
                   size: 50,
                   color: Color(0xFFFFD700),
                 ),
@@ -185,7 +186,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
         ),
       ),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+        icon: const Icon(AppIcons.arrowBackIosNew, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
     );

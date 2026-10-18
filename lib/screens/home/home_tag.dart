@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
@@ -14,9 +14,8 @@ import 'package:provider/provider.dart';
 
 import '../app_provider.dart';
 import 'notification_screen.dart';
-import 'ai_camera_tab.dart';
+import '../../widgets/feature_unavailable.dart';
 import 'scan_history.dart';
-import '../profile/scan_history_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -31,11 +30,14 @@ class _HomeTabState extends State<HomeTab> {
 
   double uvIndex = 0.0;
   bool isLoadingWeather = true;
+  String? _uvError;
   Color uvColor = Colors.blueAccent;
-  IconData weatherIcon = Icons.cloud;
+  IconData weatherIcon = AppIcons.cloud;
 
   List<Map<String, dynamic>> skinDiary = [];
   bool isLoadingDiary = true;
+  bool _diaryLoadFailed = false;
+  bool _isSavingDiary = false;
   List<SavedScan> _savedScans = const [];
 
   // LỊCH SKINCARE: Đã thêm cờ 'hasTimer' để phân biệt bước nào cần đếm ngược
@@ -92,85 +94,126 @@ class _HomeTabState extends State<HomeTab> {
   // ... (Giữ nguyên các hàm _fetchUVWithLocation, _fetchUVData, _updateUVLogic, _getUVMessage, _getGreeting, _launchURL, _loadDiaryFromFirestore, _addDiaryPhoto, _showBeforeAfterDialog, _showTipDetail, _showAddTipDialog, _showEditTipDialog, _deleteTip như cũ)
 
   Future<void> _fetchUVWithLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    if (mounted) {
+      setState(() {
+        isLoadingWeather = true;
+        _uvError = null;
+      });
+    }
+
     try {
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _fetchUVData(10.7626, 106.6601);
+        _setUVError(
+          'Hãy bật dịch vụ vị trí',
+          'Please enable location services',
+        );
         return;
       }
-      permission = await Geolocator.checkPermission();
+
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _fetchUVData(10.7626, 106.6601);
+          _setUVError(
+            'Cần quyền vị trí để đo UV',
+            'Location permission is required',
+          );
           return;
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        _fetchUVData(10.7626, 106.6601);
+        _setUVError(
+          'Hãy cấp quyền vị trí trong Cài đặt',
+          'Enable location permission in Settings',
+        );
         return;
       }
-      Position? position = await Geolocator.getLastKnownPosition();
-      position ??= await Geolocator.getCurrentPosition(
+
+      // Luôn lấy vị trí mới để UV phản ánh đúng nơi người dùng đang đứng,
+      // thay vì dùng vị trí cuối cùng có thể đã cũ.
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
+          timeLimit: Duration(seconds: 10),
         ),
       );
-      _fetchUVData(position.latitude, position.longitude);
-    } catch (e) {
-      if (mounted) _fetchUVData(10.7626, 106.6601);
+      await _fetchUVData(position.latitude, position.longitude);
+    } on TimeoutException {
+      _setUVError(
+        'Không lấy được vị trí hiện tại',
+        'Could not get current location',
+      );
+    } catch (_) {
+      _setUVError('Không thể cập nhật vị trí', 'Could not update location');
     }
   }
 
   Future<void> _fetchUVData(double lat, double lon) async {
     final url = Uri.parse(
-      'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=uv_index&timezone=Asia%2FHo_Chi_Minh',
+      'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=uv_index&timezone=auto',
     );
     try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            uvIndex = data['current']['uv_index'];
-            _updateUVLogic();
-            isLoadingWeather = false;
-          });
-        }
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) {
+        _setUVError('Dịch vụ UV đang bận', 'UV service is unavailable');
+        return;
       }
-    } catch (e) {
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final current = data['current'] as Map<String, dynamic>?;
+      final value = current?['uv_index'];
+      if (value is! num) {
+        _setUVError('Dữ liệu UV không hợp lệ', 'Invalid UV data');
+        return;
+      }
+
       if (mounted) {
         setState(() {
+          uvIndex = value.toDouble();
+          _updateUVLogic();
           isLoadingWeather = false;
+          _uvError = null;
         });
       }
+    } on TimeoutException {
+      _setUVError('Cập nhật UV quá thời gian', 'UV request timed out');
+    } catch (_) {
+      _setUVError('Không thể cập nhật UV', 'Could not update UV');
     }
+  }
+
+  void _setUVError(String vi, String en) {
+    if (!mounted) return;
+    final isEn = context.read<AppProvider>().isEnglish;
+    setState(() {
+      isLoadingWeather = false;
+      _uvError = isEn ? en : vi;
+    });
   }
 
   void _updateUVLogic() {
     if (uvIndex <= 0) {
       uvColor = Colors.indigo.shade400;
-      weatherIcon = Icons.nights_stay;
+      weatherIcon = AppIcons.nightsStay;
     } else if (uvIndex < 3) {
       uvColor = Colors.green;
-      weatherIcon = Icons.wb_sunny_outlined;
+      weatherIcon = AppIcons.wbSunnyOutlined;
     } else if (uvIndex < 6) {
       uvColor = Colors.orange;
-      weatherIcon = Icons.wb_sunny;
+      weatherIcon = AppIcons.wbSunny;
     } else if (uvIndex < 8) {
       uvColor = Colors.deepOrange;
-      weatherIcon = Icons.wb_twilight;
+      weatherIcon = AppIcons.wbTwilight;
     } else {
       uvColor = Colors.redAccent;
-      weatherIcon = Icons.local_fire_department;
+      weatherIcon = AppIcons.localFireDepartment;
     }
   }
 
   String _getUVMessage(bool isEn) {
     if (isLoadingWeather) return isEn ? "Loading..." : "Đang cập nhật...";
+    if (_uvError != null) return _uvError!;
     if (uvIndex <= 0) return isEn ? "Night (No UV)" : "Trời tối (Không có UV)";
     if (uvIndex < 3) return isEn ? "Low (Safe)" : "UV Thấp (An toàn)";
     if (uvIndex < 6) return isEn ? "Moderate (Sunscreen)" : "UV Vừa (Bôi KCN)";
@@ -204,50 +247,112 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _loadDiaryFromFirestore() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
+    setState(() {
+      isLoadingDiary = true;
+      _diaryLoadFailed = false;
+    });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .get();
-      if (doc.exists && doc.data()!.containsKey('skinDiary')) {
-        if (mounted) {
-          setState(() {
-            skinDiary = List<Map<String, dynamic>>.from(doc['skinDiary']);
-          });
-        }
-      }
+          .get()
+          .timeout(const Duration(seconds: 12));
+      final entries = List<Map<String, dynamic>>.from(
+        doc.data()?['skinDiary'] ?? [],
+      );
+      if (mounted) setState(() => skinDiary = entries);
+    } catch (_) {
+      if (mounted) setState(() => _diaryLoadFailed = true);
+    } finally {
+      if (mounted) setState(() => isLoadingDiary = false);
     }
-    if (mounted) setState(() => isLoadingDiary = false);
   }
 
   Future<void> _addDiaryPhoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 30,
+    if (_isSavingDiary) return;
+    final isEn = context.read<AppProvider>().isEnglish;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn
+                ? 'Sign in to save your diary.'
+                : 'Đăng nhập để lưu nhật ký da.',
+          ),
+        ),
+      );
+      return;
+    }
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(isEn ? 'Take a photo' : 'Chụp ảnh mới'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              title: Text(
+                isEn ? 'Choose from gallery' : 'Chọn ảnh từ thư viện',
+              ),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
     );
-    if (image != null) {
-      final Uint8List bytes = await image.readAsBytes();
-      final String base64Image = base64Encode(bytes);
-      setState(() {
-        skinDiary.add({
-          'week': skinDiary.length + 1,
-          'image': base64Image,
-          'date': DateTime.now().toIso8601String(),
-        });
-      });
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'skinDiary': skinDiary,
-        }, SetOptions(merge: true));
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Đã lưu ảnh tuần này!')));
-        }
-      }
+    if (source == null || !mounted) return;
+    setState(() => _isSavingDiary = true);
+    try {
+      final image = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 30,
+        maxWidth: 720,
+        maxHeight: 720,
+      );
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      final entry = <String, dynamic>{
+        'week': skinDiary.length + 1,
+        'image': base64Encode(bytes),
+        'date': DateTime.now().toIso8601String(),
+      };
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+            'skinDiary': FieldValue.arrayUnion([entry]),
+          }, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      setState(() => skinDiary = [...skinDiary, entry]);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEn ? 'Diary photo saved.' : 'Đã lưu ảnh nhật ký!'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is TimeoutException
+                ? (isEn
+                      ? 'Save not confirmed. Reload the diary before adding again.'
+                      : 'Chưa xác nhận được ảnh đã lưu. Hãy tải lại nhật ký trước khi thêm lại.')
+                : (isEn
+                      ? 'Could not select or save the photo. Please try again.'
+                      : 'Không thể chọn hoặc lưu ảnh. Vui lòng thử lại.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSavingDiary = false);
     }
   }
 
@@ -276,8 +381,8 @@ class _HomeTabState extends State<HomeTab> {
               const SizedBox(height: 5),
               Text(
                 isEn
-                    ? "Amazing! Your skin is getting better."
-                    : "Thật tuyệt vời! Da bạn đang tốt lên từng ngày.",
+                    ? "Compare your first and latest photos under similar lighting."
+                    : "Quan sát ảnh đầu tiên và mới nhất trong điều kiện ánh sáng tương tự.",
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
@@ -442,7 +547,7 @@ class _HomeTabState extends State<HomeTab> {
                       children: [
                         IconButton(
                           icon: const Icon(
-                            Icons.edit_square,
+                            AppIcons.editSquare,
                             color: Colors.orangeAccent,
                           ),
                           onPressed: () {
@@ -452,7 +557,7 @@ class _HomeTabState extends State<HomeTab> {
                         ),
                         IconButton(
                           icon: const Icon(
-                            Icons.delete,
+                            AppIcons.delete,
                             color: Colors.redAccent,
                           ),
                           onPressed: () {
@@ -474,7 +579,7 @@ class _HomeTabState extends State<HomeTab> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.article_outlined),
+                  icon: const Icon(AppIcons.articleOutlined),
                   label: Text(
                     isEn ? 'Read full article' : 'Đọc bài viết chi tiết',
                     style: const TextStyle(
@@ -809,7 +914,11 @@ class _HomeTabState extends State<HomeTab> {
               ),
               title: Column(
                 children: [
-                  const Icon(Icons.timer, color: Colors.blueAccent, size: 40),
+                  const Icon(
+                    AppIcons.timer,
+                    color: Colors.blueAccent,
+                    size: 40,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     taskName,
@@ -951,7 +1060,7 @@ class _HomeTabState extends State<HomeTab> {
                             ),
                             trailing: IconButton(
                               icon: const Icon(
-                                Icons.remove_circle,
+                                AppIcons.removeCircle,
                                 color: Colors.redAccent,
                               ),
                               onPressed: () {
@@ -1011,7 +1120,7 @@ class _HomeTabState extends State<HomeTab> {
                         }
                       },
                       icon: const Icon(
-                        Icons.add,
+                        AppIcons.add,
                         color: Colors.white,
                         size: 18,
                       ),
@@ -1066,12 +1175,8 @@ class _HomeTabState extends State<HomeTab> {
     final displayName =
         user?.displayName ?? user?.email?.split('@')[0] ?? 'Bạn';
 
-    final bool isAdmin =
-        user != null &&
-        user.email != null &&
-        user.email!.startsWith('admin000');
-
     final appProvider = Provider.of<AppProvider>(context);
+    final bool isAdmin = appProvider.isAdmin;
     final bool isEn = appProvider.isEnglish;
     final bool isDark = appProvider.isDarkMode;
 
@@ -1277,70 +1382,84 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildUVIndexCard(bool isEn, Color cardColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return GestureDetector(
+      onTap: _uvError == null ? null : _fetchUVWithLocation,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 155),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
 
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(18),
 
-        border: Border.all(
-          color: isLoadingWeather
-              ? Colors.transparent
-              : uvColor.withValues(alpha: 0.20),
+          border: Border.all(
+            color: isLoadingWeather
+                ? Colors.transparent
+                : uvColor.withValues(alpha: 0.20),
+          ),
         ),
-      ),
 
-      child: isLoadingWeather
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.blueAccent,
+        child: isLoadingWeather
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.blueAccent,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  isEn ? "Loading..." : "Đang đo...",
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-              ],
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(weatherIcon, color: uvColor, size: 19),
+                  const SizedBox(width: 7),
+                  Text(
+                    isEn ? "Loading..." : "Đang đo...",
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _uvError == null
+                        ? weatherIcon
+                        : AppIcons.locationOffOutlined,
+                    color: _uvError == null ? uvColor : Colors.orange,
+                    size: 19,
+                  ),
 
-                const SizedBox(width: 6),
+                  const SizedBox(width: 6),
 
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEn ? "UV: $uvIndex" : "UV: $uvIndex",
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _uvError == null
+                            ? "UV: ${uvIndex.toStringAsFixed(1)}"
+                            : (isEn ? "Tap to retry" : "Chạm để thử lại"),
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
 
-                    Text(
-                      _getUVMessage(isEn),
-                      style: TextStyle(
-                        color: uvColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 9,
+                      Text(
+                        _getUVMessage(isEn),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _uvError == null ? uvColor : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 9,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -1380,7 +1499,7 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ],
                 ),
-                child: Icon(Icons.notifications_none, color: textColor),
+                child: Icon(AppIcons.notificationsNone, color: textColor),
               ),
               if (unreadCount > 0)
                 Positioned(
@@ -1468,6 +1587,7 @@ class _HomeTabState extends State<HomeTab> {
         cardColor: cardColor,
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ========================================================
@@ -1515,8 +1635,6 @@ class _HomeTabState extends State<HomeTab> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('💡 ${advices[status]}'),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Colors.blueAccent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -1614,7 +1732,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: const Padding(
                       padding: EdgeInsets.all(8),
                       child: Icon(
-                        Icons.edit_outlined,
+                        AppIcons.editOutlined,
                         size: 16,
                         color: Colors.grey,
                       ),
@@ -1664,7 +1782,10 @@ class _HomeTabState extends State<HomeTab> {
                 final bool isDone = item['isDone'] == true;
 
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(vertical: 3),
+                  dense: true,
+                  minTileHeight: 48,
+                  visualDensity: const VisualDensity(vertical: -2),
+                  contentPadding: EdgeInsets.zero,
 
                   leading: Transform.scale(
                     scale: 1.05,
@@ -1703,7 +1824,7 @@ class _HomeTabState extends State<HomeTab> {
                           visualDensity: VisualDensity.compact,
 
                           icon: const Icon(
-                            Icons.timer_outlined,
+                            AppIcons.timerOutlined,
                             color: Colors.orangeAccent,
                             size: 21,
                           ),
@@ -1733,8 +1854,8 @@ class _HomeTabState extends State<HomeTab> {
                       setState(() => _isRoutineExpanded = !_isRoutineExpanded),
                   icon: Icon(
                     _isRoutineExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
+                        ? AppIcons.keyboardArrowUpRounded
+                        : AppIcons.keyboardArrowDownRounded,
                     size: 20,
                   ),
                   label: Text(
@@ -1747,6 +1868,9 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF356FE8),
+                    minimumSize: const Size.fromHeight(40),
+                    padding: const EdgeInsets.only(top: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ),
@@ -1760,13 +1884,7 @@ class _HomeTabState extends State<HomeTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GestureDetector(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AiCameraTab()),
-          );
-          await _loadSavedScans();
-        },
+        onTap: () => showFeatureUnavailable(context, isEnglish: isEn),
 
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 22, 18, 22),
@@ -1801,7 +1919,7 @@ class _HomeTabState extends State<HomeTab> {
                 ),
 
                 child: const Icon(
-                  Icons.face_retouching_natural_rounded,
+                  AppIcons.faceRetouchingNaturalRounded,
                   color: Colors.white,
                   size: 25,
                 ),
@@ -1851,7 +1969,7 @@ class _HomeTabState extends State<HomeTab> {
                 ),
 
                 child: const Icon(
-                  Icons.camera_alt_rounded,
+                  AppIcons.cameraAltRounded,
                   color: Colors.white,
                   size: 15,
                 ),
@@ -1888,7 +2006,7 @@ class _HomeTabState extends State<HomeTab> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
-                  Icons.insights_rounded,
+                  AppIcons.insightsRounded,
                   color: Color(0xFF4D6FE8),
                 ),
               ),
@@ -1945,13 +2063,7 @@ class _HomeTabState extends State<HomeTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-          );
-          await _loadSavedScans();
-        },
+        onTap: () => showFeatureUnavailable(context, isEnglish: isEn),
         child: _glassCard(
           cardColor: cardColor,
           padding: const EdgeInsets.all(14),
@@ -1984,7 +2096,7 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                         ),
                         const Icon(
-                          Icons.chevron_right_rounded,
+                          AppIcons.chevronRightRounded,
                           color: Color(0xFF9AA2AF),
                         ),
                       ],
@@ -2013,10 +2125,10 @@ class _HomeTabState extends State<HomeTab> {
                         children: [
                           Icon(
                             difference != null && difference < 0
-                                ? Icons.trending_down_rounded
+                                ? AppIcons.trendingDownRounded
                                 : difference != null && difference > 0
-                                ? Icons.trending_up_rounded
-                                : Icons.horizontal_rule_rounded,
+                                ? AppIcons.trendingUpRounded
+                                : AppIcons.horizontalRuleRounded,
                             color: trendColor,
                             size: 16,
                           ),
@@ -2073,9 +2185,9 @@ class _HomeTabState extends State<HomeTab> {
                 TextButton(
                   onPressed: () => _showBeforeAfterDialog(isEn),
 
-                  child: const Text(
-                    'So sánh',
-                    style: TextStyle(
+                  child: Text(
+                    isEn ? 'Compare' : 'So sánh',
+                    style: const TextStyle(
                       color: Colors.blueAccent,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2096,6 +2208,42 @@ class _HomeTabState extends State<HomeTab> {
 
           const SizedBox(height: 16),
 
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              isEn
+                  ? '1. Add a clear photo today.\n2. Use the same angle and lighting each week, without filters.\n3. Add a second photo to unlock Compare.'
+                  : '1. Thêm một ảnh rõ mặt hôm nay.\n2. Mỗi tuần chụp cùng góc, cùng ánh sáng, không dùng bộ lọc.\n3. Có từ 2 ảnh, bấm So sánh để xem thay đổi.',
+              style: TextStyle(color: textColor, height: 1.5, fontSize: 13),
+            ),
+          ),
+          if (_diaryLoadFailed)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEn
+                      ? 'Could not load your diary. Check your connection and retry.'
+                      : 'Chưa tải được nhật ký. Kiểm tra kết nối rồi thử lại.',
+                  style: TextStyle(color: subTextColor),
+                ),
+                TextButton(
+                  onPressed: _loadDiaryFromFirestore,
+                  child: Text(isEn ? 'Retry' : 'Thử lại'),
+                ),
+              ],
+            ),
+          if (_isSavingDiary)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(),
+            ),
           if (isLoadingDiary)
             const SizedBox(
               height: 150,
@@ -2119,7 +2267,7 @@ class _HomeTabState extends State<HomeTab> {
 
                   if (index == skinDiary.length) {
                     return GestureDetector(
-                      onTap: _addDiaryPhoto,
+                      onTap: _isSavingDiary ? null : _addDiaryPhoto,
 
                       child: Container(
                         width: 125,
@@ -2141,7 +2289,7 @@ class _HomeTabState extends State<HomeTab> {
 
                           children: [
                             const Icon(
-                              Icons.add_a_photo_outlined,
+                              AppIcons.addAPhotoOutlined,
                               color: Colors.blueAccent,
                               size: 34,
                             ),
@@ -2149,7 +2297,9 @@ class _HomeTabState extends State<HomeTab> {
                             const SizedBox(height: 12),
 
                             Text(
-                              isEn ? "New Week" : "Tuần mới",
+                              _isSavingDiary
+                                  ? (isEn ? "Saving…" : "Đang lưu…")
+                                  : (isEn ? "Add photo" : "Thêm ảnh"),
 
                               style: const TextStyle(
                                 color: Colors.blueAccent,
@@ -2251,7 +2401,7 @@ class _HomeTabState extends State<HomeTab> {
               if (isAdmin)
                 IconButton(
                   icon: const Icon(
-                    Icons.add_circle_rounded,
+                    AppIcons.addCircleRounded,
                     color: Colors.blueAccent,
                   ),
                   onPressed: () => _showAddTipDialog(isEn, cardColor),

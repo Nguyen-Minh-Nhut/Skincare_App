@@ -1,8 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releaseKeyProperties = Properties()
+val releaseKeyPropertiesFile = rootProject.file("key.properties")
+if (releaseKeyPropertiesFile.exists()) {
+    FileInputStream(releaseKeyPropertiesFile).use(releaseKeyProperties::load)
 }
 
 // YOLO uses LiteRT 2.x while tflite_flutter's FFI bindings still open the
@@ -48,15 +57,38 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        if (releaseKeyPropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(releaseKeyProperties.getProperty("storeFile"))
+                storePassword = releaseKeyProperties.getProperty("storePassword")
+                keyAlias = releaseKeyProperties.getProperty("keyAlias")
+                keyPassword = releaseKeyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
     sourceSets.getByName("main").jniLibs.srcDir(
         layout.buildDirectory.dir("generated/legacyLiteRt/jniLibs")
     )
+}
+
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { task ->
+        task.name.contains("Release", ignoreCase = true)
+    }
+    if (buildsRelease && !releaseKeyPropertiesFile.exists()) {
+        throw GradleException(
+            "Missing android/key.properties. Copy key.properties.example " +
+                "and configure the private release keystore."
+        )
+    }
 }
 
 flutter {

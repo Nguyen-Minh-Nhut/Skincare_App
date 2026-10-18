@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:async';
@@ -232,7 +233,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
         actions: [
           Builder(
             builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, size: 28),
+              icon: const Icon(AppIcons.menu, size: 28),
               onPressed: () => Scaffold.of(context).openEndDrawer(),
             ),
           ),
@@ -299,7 +300,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
                   ),
                   prefixIcon: Icon(
-                    Icons.search,
+                    AppIcons.search,
                     color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
                   ),
                   filled: true,
@@ -315,7 +316,10 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.edit_square, color: Colors.blueAccent),
+              leading: const Icon(
+                AppIcons.editSquare,
+                color: Colors.blueAccent,
+              ),
               title: Text(
                 isEn ? "New conversation" : "Cuộc trò chuyện mới",
                 style: const TextStyle(
@@ -361,7 +365,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                                     : Colors.blue.shade50)
                               : null,
                           leading: Icon(
-                            Icons.chat_bubble_outline,
+                            AppIcons.chatBubbleOutline,
                             color: isDark ? Colors.white54 : Colors.black54,
                             size: 20,
                           ),
@@ -380,7 +384,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                           ),
                           trailing: IconButton(
                             icon: const Icon(
-                              Icons.delete_outline,
+                              AppIcons.deleteOutline,
                               color: Colors.redAccent,
                               size: 18,
                             ),
@@ -568,7 +572,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: textColor),
+                      icon: Icon(AppIcons.close, color: textColor),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -714,7 +718,11 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.auto_awesome, color: Colors.blueAccent, size: 24),
+            const Icon(
+              AppIcons.autoAwesome,
+              color: Colors.blueAccent,
+              size: 24,
+            ),
             const SizedBox(width: 15),
             Expanded(
               child: Column(
@@ -734,8 +742,8 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                       IconButton(
                         icon: Icon(
                           msg['isLiked'] == true
-                              ? Icons.thumb_up
-                              : Icons.thumb_up_alt_outlined,
+                              ? AppIcons.thumbUp
+                              : AppIcons.thumbUpAltOutlined,
                           size: 20,
                         ),
                         color: msg['isLiked'] == true
@@ -757,8 +765,8 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                       IconButton(
                         icon: Icon(
                           msg['isDisliked'] == true
-                              ? Icons.thumb_down
-                              : Icons.thumb_down_alt_outlined,
+                              ? AppIcons.thumbDown
+                              : AppIcons.thumbDownAltOutlined,
                           size: 20,
                         ),
                         color: msg['isDisliked'] == true
@@ -779,7 +787,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                       ),
                       IconButton(
                         icon: Icon(
-                          Icons.copy_outlined,
+                          AppIcons.copyOutlined,
                           size: 20,
                           color: Colors.grey.shade500,
                         ),
@@ -802,7 +810,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                       ),
                       IconButton(
                         icon: Icon(
-                          Icons.more_vert,
+                          AppIcons.moreVert,
                           size: 20,
                           color: Colors.grey.shade500,
                         ),
@@ -849,7 +857,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
               children: [
                 IconButton(
                   icon: const Icon(
-                    Icons.add_circle_outline,
+                    AppIcons.addCircleOutline,
                     color: Colors.blueAccent,
                   ),
                   onPressed: () {},
@@ -874,7 +882,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 ),
                 IconButton(
                   icon: Icon(
-                    Icons.send,
+                    AppIcons.send,
                     color: _isLoading ? Colors.grey : Colors.blueAccent,
                   ),
                   onPressed: _isLoading ? null : _sendMessage,

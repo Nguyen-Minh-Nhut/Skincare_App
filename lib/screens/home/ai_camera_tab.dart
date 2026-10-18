@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -158,7 +159,6 @@ class _AiCameraTabState extends State<AiCameraTab>
               content: Text(
                 'Không thể phân tích ảnh này. Vui lòng thử ảnh khác.',
               ),
-              backgroundColor: Colors.redAccent,
             ),
           );
         }
@@ -193,7 +193,7 @@ class _AiCameraTabState extends State<AiCameraTab>
         actions: [
           if (_imageFile != null)
             IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.blueAccent),
+              icon: const Icon(AppIcons.refresh, color: Colors.blueAccent),
               onPressed: _resetCamera,
             ),
         ],
@@ -217,7 +217,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.face_retouching_natural,
+                  AppIcons.faceRetouchingNatural,
                   size: 80,
                   color: Colors.blueAccent,
                 ),
@@ -262,7 +262,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                       ),
                       TextButton.icon(
                         onPressed: _initAI,
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(AppIcons.refresh),
                         label: const Text('Tải lại model'),
                       ),
                     ],
@@ -279,7 +279,10 @@ class _AiCameraTabState extends State<AiCameraTab>
                         onPressed: _isModelReady
                             ? () => _pickImage(ImageSource.camera)
                             : null,
-                        icon: const Icon(Icons.camera_alt, color: Colors.white),
+                        icon: const Icon(
+                          AppIcons.cameraAlt,
+                          color: Colors.white,
+                        ),
                         label: const Text(
                           'Chụp ảnh',
                           style: TextStyle(
@@ -308,7 +311,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                             ? () => _pickImage(ImageSource.gallery)
                             : null,
                         icon: const Icon(
-                          Icons.photo_library,
+                          AppIcons.photoLibrary,
                           color: Colors.blueAccent,
                         ),
                         label: const Text(
@@ -486,7 +489,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                 child: _buildInfoCard(
                   "$acneCount nốt",
                   "Phát hiện",
-                  Icons.coronavirus,
+                  AppIcons.coronavirus,
                   Colors.redAccent,
                 ),
               ),
@@ -495,7 +498,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                 child: _buildInfoCard(
                   acneCount > 5 ? "Cần chú ý" : "Khá ổn",
                   "Trạng thái",
-                  Icons.health_and_safety,
+                  AppIcons.healthAndSafety,
                   Colors.green,
                 ),
               ),
@@ -508,7 +511,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                 child: _buildInfoCard(
                   "5 Trạng thái",
                   "Phân loại",
-                  Icons.category,
+                  AppIcons.category,
                   Colors.blueAccent,
                 ),
               ),
@@ -517,7 +520,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                 child: _buildInfoCard(
                   "Deep Learning",
                   "Engine",
-                  Icons.memory,
+                  AppIcons.memory,
                   Colors.purpleAccent,
                 ),
               ),
@@ -559,35 +562,35 @@ class _AiCameraTabState extends State<AiCameraTab>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildExpertRow(
-                      Icons.analytics,
+                      AppIcons.analytics,
                       "Đánh giá:",
                       advice.level,
                       Colors.blue,
                     ),
                     const Divider(height: 20),
                     _buildExpertRow(
-                      Icons.wb_sunny,
+                      AppIcons.wbSunny,
                       "Buổi sáng:",
                       advice.morningRoutine,
                       Colors.orange,
                     ),
                     const SizedBox(height: 10),
                     _buildExpertRow(
-                      Icons.nightlight_round,
+                      AppIcons.nightlightRound,
                       "Buổi tối:",
                       advice.nightRoutine,
                       Colors.indigo,
                     ),
                     const Divider(height: 20),
                     _buildExpertRow(
-                      Icons.science,
+                      AppIcons.science,
                       "Hoạt chất khuyên dùng:",
                       advice.activeIngredients,
                       Colors.green,
                     ),
                     const SizedBox(height: 10),
                     _buildExpertRow(
-                      Icons.warning_amber_rounded,
+                      AppIcons.warningAmberRounded,
                       "Lưu ý:",
                       advice.warning,
                       Colors.redAccent,
@@ -626,7 +629,6 @@ class _AiCameraTabState extends State<AiCameraTab>
                       content: Text(
                         'Đã lưu ảnh và kết quả vào Lịch sử soi da!',
                       ),
-                      backgroundColor: Colors.green,
                     ),
                   );
                 } catch (error) {
@@ -634,12 +636,11 @@ class _AiCameraTabState extends State<AiCameraTab>
                   messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Không thể lưu kết quả. Vui lòng thử lại.'),
-                      backgroundColor: Colors.redAccent,
                     ),
                   );
                 }
               },
-              icon: const Icon(Icons.save_alt, color: Colors.blueAccent),
+              icon: const Icon(AppIcons.saveAlt, color: Colors.blueAccent),
               label: const Text(
                 'Lưu kết quả này',
                 style: TextStyle(

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import 'dart:async';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../main_screens.dart';
 import 'introduction_screen.dart';
+import 'password_reset_dialog.dart';
+import '../../services/facebook_sign_in_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -13,6 +18,9 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  static const _authTimeout = Duration(seconds: 10);
+  static const _firestoreTimeout = Duration(seconds: 6);
+
   bool isLogin = true;
   bool isLoading = false;
 
@@ -32,41 +40,11 @@ class _AuthScreenState extends State<AuthScreen> {
         // ---------------- XỬ LÝ ĐĂNG NHẬP (ĐÃ BỌC GIÁP CHỐNG PIGEON) ----------------
         String loginId = _loginIdController.text.trim();
         String password = _passwordController.text;
-        String loginEmail = loginId;
-
-        if (loginId.isEmpty || password.isEmpty) {
+        if (!loginId.contains('@') || password.isEmpty) {
           throw FirebaseAuthException(
             code: 'empty-credentials',
-            message: 'Vui lòng nhập đầy đủ tài khoản và mật khẩu.',
+            message: 'Vui lòng nhập email và mật khẩu hợp lệ.',
           );
-        }
-
-        // Nếu nhập Username (không có kí tự @) -> Đi tìm Email tương ứng trên Firestore
-        if (!loginId.contains('@')) {
-          var userQuery = await FirebaseFirestore.instance
-              .collection('users')
-              .where('username', isEqualTo: loginId.toLowerCase())
-              .limit(1)
-              .get()
-              .timeout(const Duration(seconds: 15));
-
-          // Tương thích tài khoản cũ từng lưu username có chữ hoa.
-          if (userQuery.docs.isEmpty && loginId != loginId.toLowerCase()) {
-            userQuery = await FirebaseFirestore.instance
-                .collection('users')
-                .where('username', isEqualTo: loginId)
-                .limit(1)
-                .get()
-                .timeout(const Duration(seconds: 15));
-          }
-
-          if (userQuery.docs.isEmpty) {
-            throw FirebaseAuthException(
-              code: 'username-not-found',
-              message: 'Tên đăng nhập không tồn tại.',
-            );
-          }
-          loginEmail = userQuery.docs.first['email'];
         }
 
         debugPrint("⏳ ĐANG ĐĂNG NHẬP...");
@@ -74,8 +52,8 @@ class _AuthScreenState extends State<AuthScreen> {
         try {
           // Tiến hành đăng nhập vào Firebase Auth bằng Email
           await FirebaseAuth.instance
-              .signInWithEmailAndPassword(email: loginEmail, password: password)
-              .timeout(const Duration(seconds: 15));
+              .signInWithEmailAndPassword(email: loginId, password: password)
+              .timeout(_authTimeout);
           currentUser = FirebaseAuth.instance.currentUser;
         } catch (e) {
           // NẾU BẮT ĐƯỢC LỖI PIGEON LÚC ĐĂNG NHẬP
@@ -123,27 +101,13 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
 
-        final duplicateUsername = await FirebaseFirestore.instance
-            .collection('users')
-            .where('username', isEqualTo: username)
-            .limit(1)
-            .get()
-            .timeout(const Duration(seconds: 15));
-        if (duplicateUsername.docs.isNotEmpty) {
-          throw FirebaseAuthException(
-            code: 'username-already-in-use',
-            message: 'Tên người dùng này đã được sử dụng.',
-          );
-        }
-
         // 1. Tạo tài khoản trên hệ thống Firebase Auth
         debugPrint("⏳ BƯỚC 1: ĐANG TẠO AUTH...");
         User? currentUser;
         try {
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
+          await FirebaseAuth.instance
+              .createUserWithEmailAndPassword(email: email, password: password)
+              .timeout(_authTimeout);
           currentUser = FirebaseAuth.instance.currentUser;
         } catch (e) {
           // NẾU BẮT ĐƯỢC LỖI PIGEON LÚC ĐĂNG KÝ
@@ -213,7 +177,6 @@ class _AuthScreenState extends State<AuthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Kết nối Firebase quá chậm. Vui lòng thử lại.'),
-            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -252,143 +215,125 @@ class _AuthScreenState extends State<AuthScreen> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // ==========================================
-  // HÀM HIỆN POPUP QUÊN MẬT KHẨU
-  // ==========================================
-  void _showForgotPasswordDialog() {
-    final TextEditingController resetController = TextEditingController();
-    bool isSending = false;
+  Future<void> _signInWithGoogle() async {
+    if (isLoading) return;
+    setState(() => isLoading = true);
 
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: const Text(
-              "Quên mật khẩu?",
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Nhập Username hoặc Email để nhận liên kết đặt lại mật khẩu từ hệ thống.",
-                  style: TextStyle(fontSize: 13),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: resetController,
-                  decoration: InputDecoration(
-                    hintText: "Email hoặc Tên user",
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: isSending
-                    ? null
-                    : () async {
-                        String input = resetController.text.trim();
-                        if (input.isEmpty) return;
+    try {
+      final googleUser = await GoogleSignIn().signIn().timeout(_authTimeout);
+      if (googleUser == null) return;
 
-                        setDialogState(() => isSending = true);
-                        try {
-                          String emailToReset = input;
-                          if (!input.contains('@')) {
-                            var userQuery = await FirebaseFirestore.instance
-                                .collection('users')
-                                .where('username', isEqualTo: input)
-                                .limit(1)
-                                .get();
-                            if (userQuery.docs.isEmpty) {
-                              throw Exception("Không tìm thấy Tên user này.");
-                            }
-                            emailToReset = userQuery.docs.first['email'];
-                          }
+      final googleAuth = await googleUser.authentication.timeout(_authTimeout);
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final result = await FirebaseAuth.instance
+          .signInWithCredential(credential)
+          .timeout(_authTimeout);
+      await _completeSocialSignIn(result.user, provider: 'google.com');
+    } on TimeoutException {
+      _showAuthError('Đăng nhập Google quá thời gian. Vui lòng thử lại.');
+    } catch (error) {
+      _showAuthError(_socialErrorMessage(error, 'Google'));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
-                          await FirebaseAuth.instance.sendPasswordResetEmail(
-                            email: emailToReset,
-                          );
-                          if (dialogContext.mounted) {
-                            final messenger = ScaffoldMessenger.of(
-                              dialogContext,
-                            );
-                            Navigator.pop(dialogContext);
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Đã gửi liên kết đổi mật khẩu vào hộp thư Email thành công!",
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (!dialogContext.mounted) return;
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(
-                              content: Text("Lỗi: $e"),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        } finally {
-                          if (dialogContext.mounted) {
-                            setDialogState(() => isSending = false);
-                          }
-                        }
-                      },
-                child: isSending
-                    ? const SizedBox(
-                        height: 15,
-                        width: 15,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        "Gửi link",
-                        style: TextStyle(color: Colors.white),
-                      ),
-              ),
-            ],
-          );
-        },
+  Future<void> _signInWithFacebook() async {
+    if (isLoading) return;
+    setState(() => isLoading = true);
+    try {
+      final result = await FacebookSignInService().signIn();
+      if (result == null || !mounted) return;
+      await _completeSocialSignIn(result.user, provider: 'facebook.com');
+    } on TimeoutException {
+      _showAuthError('Kết nối quá chậm. Vui lòng kiểm tra mạng và thử lại.');
+    } catch (error) {
+      _showAuthError(_socialErrorMessage(error, 'Facebook'));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _completeSocialSignIn(
+    User? user, {
+    required String provider,
+  }) async {
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'social-user-missing',
+        message: 'Không lấy được thông tin tài khoản.',
+      );
+    }
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+    await userRef
+        .set({
+          'uid': user.uid,
+          'email': user.email,
+          'name': user.displayName ?? '',
+          'photoUrl': user.photoURL,
+          'provider': provider,
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true))
+        .timeout(_firestoreTimeout);
+
+    final profile = await userRef.get().timeout(_firestoreTimeout);
+    final skinType = profile.data()?['skinType']?.toString().trim() ?? '';
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => skinType.isNotEmpty && skinType != 'Chưa xác định'
+            ? const MainScreen()
+            : const IntroductionScreen(),
       ),
-    ).whenComplete(resetController.dispose);
+    );
+  }
+
+  String _socialErrorMessage(Object error, String provider) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'account-exists-with-different-credential':
+          return 'Email này đã có tài khoản. Hãy đăng nhập bằng Google hoặc email/mật khẩu đã dùng trước đó.';
+        case 'network-request-failed':
+          return 'Không có kết nối mạng. Vui lòng kiểm tra Internet.';
+        case 'operation-not-allowed':
+          return 'Đăng nhập $provider chưa được bật trong Firebase Console.';
+        case 'invalid-credential':
+          return 'Thông tin đăng nhập $provider không hợp lệ.';
+      }
+      return error.message ?? 'Không thể đăng nhập bằng $provider.';
+    }
+    final text = error.toString();
+    if (text.contains('ApiException: 10') || text.contains('DEVELOPER_ERROR')) {
+      return 'Google Sign-In chưa được cấu hình SHA-1/SHA-256 trong Firebase.';
+    }
+    return 'Không thể đăng nhập bằng $provider. Vui lòng thử lại.';
+  }
+
+  void _showAuthError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showForgotPasswordDialog() {
+    showPasswordResetDialog(context, initialEmail: _loginIdController.text);
   }
 
   @override
@@ -443,109 +388,178 @@ class _AuthScreenState extends State<AuthScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 28),
 
-                if (!isLogin) ...[
-                  _buildTextField(
-                    controller: _nameController,
-                    hint: 'Họ và tên hiển thị',
-                    icon: Icons.person_outline,
-                  ),
-                  const SizedBox(height: 15),
-                  _buildTextField(
-                    controller: _usernameController,
-                    hint: 'Tên user (Viết liền, không dấu)',
-                    icon: Icons.alternate_email,
-                  ),
-                  const SizedBox(height: 15),
-                ],
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.52),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.78),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF5356A8,
+                            ).withValues(alpha: 0.10),
+                            blurRadius: 28,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!isLogin) ...[
+                            _buildTextField(
+                              controller: _nameController,
+                              hint: 'Họ và tên hiển thị',
+                              icon: AppIcons.personOutline,
+                            ),
+                            const SizedBox(height: 15),
+                            _buildTextField(
+                              controller: _usernameController,
+                              hint: 'Tên user (Viết liền, không dấu)',
+                              icon: AppIcons.alternateEmail,
+                            ),
+                            const SizedBox(height: 15),
+                          ],
 
-                _buildTextField(
-                  controller: _loginIdController,
-                  hint: isLogin ? 'Email hoặc Tên user' : 'Email đăng ký',
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 15),
+                          _buildTextField(
+                            controller: _loginIdController,
+                            hint: isLogin ? 'Email' : 'Email đăng ký',
+                            icon: AppIcons.emailOutlined,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 15),
 
-                _buildTextField(
-                  controller: _passwordController,
-                  hint: 'Mật khẩu',
-                  icon: Icons.lock_outline,
-                  isPassword: true,
-                ),
+                          _buildTextField(
+                            controller: _passwordController,
+                            hint: 'Mật khẩu',
+                            icon: AppIcons.lockOutline,
+                            isPassword: true,
+                          ),
 
-                if (isLogin)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _showForgotPasswordDialog,
-                      child: const Text(
-                        'Quên mật khẩu?',
-                        style: TextStyle(color: Colors.blueAccent),
+                          if (isLogin)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordDialog,
+                                child: const Text(
+                                  'Quên mật khẩu?',
+                                  style: TextStyle(color: Colors.blueAccent),
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(height: 30),
+
+                          ElevatedButton(
+                            onPressed: isLoading ? null : _submitAuth,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: Colors.blueAccent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 5,
+                              shadowColor: Colors.blueAccent.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    isLogin ? 'Đăng nhập' : 'Đăng ký',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 22),
+
+                          if (isLogin) ...[
+                            const Row(
+                              children: [
+                                Expanded(child: Divider()),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'hoặc tiếp tục với',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: Divider()),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildSocialButton(
+                              label: 'Tiếp tục với Google',
+                              brand: 'G',
+                              color: const Color(0xFF4285F4),
+                              onPressed: _signInWithGoogle,
+                            ),
+                            const SizedBox(height: 10),
+                            _buildSocialButton(
+                              label: 'Tiếp tục với Facebook',
+                              brand: 'f',
+                              color: const Color(0xFF1877F2),
+                              badge: 'Sắp ra mắt',
+                              onPressed: _signInWithFacebook,
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                isLogin
+                                    ? 'Chưa có tài khoản?'
+                                    : 'Đã có tài khoản?',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    isLogin = !isLogin;
+                                    _loginIdController.clear();
+                                    _passwordController.clear();
+                                    _nameController.clear();
+                                    _usernameController.clear();
+                                  });
+                                },
+                                child: Text(
+                                  isLogin ? 'Đăng ký ngay' : 'Đăng nhập',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blueAccent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                else
-                  const SizedBox(height: 30),
-
-                ElevatedButton(
-                  onPressed: isLoading ? null : _submitAuth,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    elevation: 5,
-                    shadowColor: Colors.blueAccent.withValues(alpha: 0.4),
                   ),
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          isLogin ? 'Đăng nhập' : 'Đăng ký',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          isLogin = !isLogin;
-                          _loginIdController.clear();
-                          _passwordController.clear();
-                          _nameController.clear();
-                          _usernameController.clear();
-                        });
-                      },
-                      child: Text(
-                        isLogin ? 'Đăng ký ngay' : 'Đăng nhập',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -580,6 +594,87 @@ class _AuthScreenState extends State<AuthScreen> {
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required String label,
+    required String brand,
+    required Color color,
+    required VoidCallback onPressed,
+    String? badge,
+  }) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.78),
+      borderRadius: BorderRadius.circular(17),
+      child: InkWell(
+        onTap: isLoading ? null : onPressed,
+        borderRadius: BorderRadius.circular(17),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Text(
+                  brand,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: brand == 'f' ? 24 : 17,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: brand == 'f' ? 'Arial' : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF24262F),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    badge,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  AppIcons.chevronRight,
+                  size: 15,
+                  color: Colors.grey.shade500,
+                ),
+            ],
           ),
         ),
       ),

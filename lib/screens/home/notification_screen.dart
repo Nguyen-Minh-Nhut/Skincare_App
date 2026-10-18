@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -56,7 +57,7 @@ class NotificationScreen extends StatelessWidget {
         elevation: 0.5,
         actions: [
           IconButton(
-            icon: const Icon(Icons.done_all, color: Colors.blueAccent),
+            icon: const Icon(AppIcons.doneAll, color: Colors.blueAccent),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -95,7 +96,7 @@ class NotificationScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.notifications_off_outlined,
+                          AppIcons.notificationsOffOutlined,
                           size: 80,
                           color: isDark ? Colors.white24 : Colors.grey.shade300,
                         ),
@@ -124,17 +125,17 @@ class NotificationScreen extends StatelessWidget {
                     bool isRead = data['isRead'] ?? false;
                     String type = data['type'] ?? 'system';
 
-                    IconData iconData = Icons.notifications;
+                    IconData iconData = AppIcons.notifications;
                     Color iconColor = Colors.blueAccent;
 
                     if (type == 'like') {
-                      iconData = Icons.favorite;
+                      iconData = AppIcons.favorite;
                       iconColor = Colors.pinkAccent;
                     } else if (type == 'comment') {
-                      iconData = Icons.chat_bubble;
+                      iconData = AppIcons.chatBubble;
                       iconColor = Colors.green;
                     } else if (type == 'routine') {
-                      iconData = Icons.alarm;
+                      iconData = AppIcons.alarm;
                       iconColor = Colors.orangeAccent;
                     }
 

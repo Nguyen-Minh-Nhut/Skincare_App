@@ -55,7 +55,8 @@ class AuthWrapper extends StatelessWidget {
           future: FirebaseFirestore.instance
               .collection('users')
               .doc(snapshot.data!.uid)
-              .get(),
+              .get()
+              .timeout(const Duration(seconds: 6)),
           builder: (context, userSnapshot) {
             if (userSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(

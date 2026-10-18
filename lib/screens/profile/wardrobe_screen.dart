@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -81,10 +82,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEn ? "✅ Added: $name" : "✅ Đã thêm: $name"),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text(isEn ? "✅ Added: $name" : "✅ Đã thêm: $name")),
         );
       }
     }
@@ -107,7 +105,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         title: Column(
           children: [
             const Icon(
-              Icons.add_shopping_cart,
+              AppIcons.addShoppingCart,
               size: 40,
               color: Colors.blueAccent,
             ),
@@ -216,7 +214,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ? "Please enter product name!"
                           : "Vui lòng nhập tên sản phẩm!",
                     ),
-                    backgroundColor: Colors.orange,
                   ),
                 );
               }
@@ -250,10 +247,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEn ? "Camera error!" : "Lỗi mở Camera!"),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(isEn ? "Camera error!" : "Lỗi mở Camera!")),
         );
       }
     }
@@ -376,7 +370,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     strokeWidth: 2,
                   ),
                 )
-              : const Icon(Icons.qr_code_scanner, color: Colors.white),
+              : const Icon(AppIcons.qrCodeScanner, color: Colors.white),
           label: Text(
             _isScanning
                 ? (isEn ? "Searching..." : "Đang tìm kiếm...")
@@ -442,7 +436,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: const Icon(
-                          Icons.delete_outline,
+                          AppIcons.deleteOutline,
                           color: Colors.white,
                           size: 30,
                         ),
@@ -508,7 +502,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.inventory_2_outlined,
+            AppIcons.inventory2Outlined,
             size: 80,
             color: isDark ? Colors.white24 : Colors.grey.shade300,
           ),
@@ -539,7 +533,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       width: 60,
       height: 60,
       color: Colors.blue.withValues(alpha: 0.15),
-      child: const Icon(Icons.local_florist, color: Colors.blueAccent),
+      child: const Icon(AppIcons.localFlorist, color: Colors.blueAccent),
     );
   }
 }

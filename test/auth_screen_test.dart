@@ -11,6 +11,8 @@ void main() {
     expect(find.bySemanticsLabel('Skincare App logo'), findsOneWidget);
     expect(find.text('Chào mừng trở lại!'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Đăng ký ngay'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Đăng ký ngay'));
     await tester.pumpAndSettle();
 
