@@ -165,7 +165,7 @@ class _SkinProfileScreenState extends State<SkinProfileScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.blueAccent),
+              child: CircularProgressIndicator(color: Color(0xFF6264D9)),
             )
           : SafeArea(
               top: false,
@@ -194,7 +194,7 @@ class _SkinProfileScreenState extends State<SkinProfileScreen> {
                             child: const Icon(
                               AppIcons.faceRetouchingNatural,
                               size: 60,
-                              color: Colors.blueAccent,
+                              color: Color(0xFF6264D9),
                             ),
                           ),
                           const SizedBox(height: 15),
@@ -395,7 +395,7 @@ class _SkinProfileScreenState extends State<SkinProfileScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                           borderSide: const BorderSide(
-                            color: Colors.blueAccent,
+                            color: Color(0xFF6264D9),
                             width: 2,
                           ),
                         ),
@@ -423,12 +423,14 @@ class _SkinProfileScreenState extends State<SkinProfileScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF6264D9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                           elevation: 5,
-                          shadowColor: Colors.blueAccent.withValues(alpha: 0.4),
+                          shadowColor: const Color(
+                            0xFF6264D9,
+                          ).withValues(alpha: 0.4),
                         ),
                       ),
                     ),
@@ -455,7 +457,7 @@ class _SkinProfileScreenState extends State<SkinProfileScreen> {
         ),
       ),
       value: isChecked,
-      activeColor: Colors.blueAccent,
+      activeColor: const Color(0xFF6264D9),
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 2),
       controlAffinity: ListTileControlAffinity.leading,
       checkboxShape: RoundedRectangleBorder(

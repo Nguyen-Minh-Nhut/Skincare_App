@@ -52,13 +52,13 @@ class HelpCenterScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.blueAccent,
+                color: const Color(0xFF6264D9),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blueAccent.withValues(
-                      alpha: isDark ? 0.1 : 0.3,
-                    ),
+                    color: const Color(
+                      0xFF6264D9,
+                    ).withValues(alpha: isDark ? 0.1 : 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -199,7 +199,7 @@ class HelpCenterScreen extends StatelessWidget {
             color: textColor,
           ),
         ),
-        iconColor: Colors.blueAccent,
+        iconColor: const Color(0xFF6264D9),
         collapsedIconColor: isDark ? Colors.white54 : Colors.black54,
         children: [
           Padding(

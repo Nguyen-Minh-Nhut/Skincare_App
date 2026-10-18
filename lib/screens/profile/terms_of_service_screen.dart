@@ -101,7 +101,7 @@ class TermsOfServiceScreen extends StatelessWidget {
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          color: Colors.blueAccent,
+          color: Color(0xFF6264D9),
         ),
       ),
     );
@@ -125,7 +125,7 @@ class TermsOfServiceScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.blueAccent,
+              color: Color(0xFF6264D9),
             ),
           ),
           Expanded(

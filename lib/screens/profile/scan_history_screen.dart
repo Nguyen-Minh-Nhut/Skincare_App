@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:skincare_app/widgets/app_icons.dart';
 
 import '../home/scan_history.dart';
 
@@ -28,6 +27,49 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     );
   }
 
+  bool get _isEn => Localizations.localeOf(context).languageCode == 'en';
+
+  Future<void> _delete(SavedScan scan) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_isEn ? 'Delete scan?' : 'Xóa kết quả soi da?'),
+        content: Text(
+          _isEn
+              ? 'This saved result and photo will be permanently deleted.'
+              : 'Kết quả và ảnh đã lưu sẽ bị xóa vĩnh viễn.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(_isEn ? 'Cancel' : 'Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(_isEn ? 'Delete' : 'Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ScanHistoryStore.delete(scan);
+      if (mounted) setState(_reload);
+    } catch (_) {
+      if (!mounted) return;
+      setState(_reload);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isEn
+                ? 'Could not finish deleting. Please retry.'
+                : 'Chưa xóa hoàn tất. Vui lòng thử lại.',
+          ),
+        ),
+      );
+    }
+  }
+
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/'
       '${value.month.toString().padLeft(2, '0')}/${value.year} '
@@ -37,17 +79,39 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Lịch sử soi da')),
+      appBar: AppBar(title: Text(_isEn ? 'Scan history' : 'Lịch sử soi da')),
       body: FutureBuilder<List<SavedScan>>(
         future: _scans,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _isEn
+                        ? 'Could not load scan history.'
+                        : 'Không tải được lịch sử soi da.',
+                  ),
+                  TextButton(
+                    onPressed: () => setState(_reload),
+                    child: Text(_isEn ? 'Retry' : 'Thử lại'),
+                  ),
+                ],
+              ),
+            );
+          }
           final scans = snapshot.data ?? const [];
           if (scans.isEmpty) {
-            return const Center(
-              child: Text('Chưa có kết quả soi da nào được lưu.'),
+            return Center(
+              child: Text(
+                _isEn
+                    ? 'No saved scans yet.'
+                    : 'Chưa có kết quả soi da nào được lưu.',
+              ),
             );
           }
           return ListView.separated(
@@ -67,27 +131,32 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                       width: 68,
                       height: 68,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox(
+                        width: 68,
+                        height: 68,
+                        child: Icon(Icons.broken_image_outlined),
+                      ),
                     ),
                   ),
                   title: Text(
-                    '${scan.acneCount} nốt • ${scan.level}',
+                    '${scan.acneCount} ${_isEn ? 'spots' : 'nốt'} • ${scan.level}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(_date(scan.createdAt)),
-                  trailing: const Icon(AppIcons.chevronRight),
+                  trailing: IconButton(
+                    tooltip: _isEn ? 'Delete scan' : 'Xóa kết quả',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _delete(scan),
+                  ),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => _SavedScanDetail(scan: scan),
                     ),
                   ),
-                  onLongPress: () async {
-                    await ScanHistoryStore.delete(scan);
-                    if (!mounted) return;
-                    setState(_reload);
-                  },
+                  onLongPress: () => _delete(scan),
                 ),
               );
             },
@@ -119,31 +188,43 @@ class _SavedScanDetail extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Kết quả soi da')),
-    body: ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.file(
-            File(scan.imagePath),
-            height: 300,
-            fit: BoxFit.cover,
+  Widget build(BuildContext context) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    return Scaffold(
+      appBar: AppBar(title: Text(isEn ? 'Scan result' : 'Kết quả soi da')),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.file(
+              File(scan.imagePath),
+              height: 300,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const SizedBox(
+                height: 300,
+                child: Icon(Icons.broken_image_outlined, size: 48),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          '${scan.acneCount} nốt được phát hiện',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 18),
-        _row('Đánh giá', scan.level),
-        _row('Buổi sáng', scan.morningRoutine),
-        _row('Buổi tối', scan.nightRoutine),
-        _row('Hoạt chất khuyên dùng', scan.activeIngredients),
-        _row('Lưu ý', scan.warning),
-      ],
-    ),
-  );
+          const SizedBox(height: 20),
+          Text(
+            isEn
+                ? '${scan.acneCount} spots detected'
+                : '${scan.acneCount} nốt được phát hiện',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 18),
+          _row(isEn ? 'Assessment' : 'Đánh giá', scan.level),
+          _row(isEn ? 'Morning' : 'Buổi sáng', scan.morningRoutine),
+          _row(isEn ? 'Evening' : 'Buổi tối', scan.nightRoutine),
+          _row(
+            isEn ? 'Suggested ingredients' : 'Hoạt chất khuyên dùng',
+            scan.activeIngredients,
+          ),
+          _row(isEn ? 'Notes' : 'Lưu ý', scan.warning),
+        ],
+      ),
+    );
+  }
 }

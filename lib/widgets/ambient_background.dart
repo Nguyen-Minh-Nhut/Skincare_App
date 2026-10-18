@@ -1,18 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-Color glassSurfaceColor(BuildContext context, {double? opacity}) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return (isDark ? const Color(0xFF171B27) : Colors.white).withValues(
-    alpha: opacity ?? (isDark ? 0.64 : 0.62),
-  );
-}
+Color glassSurfaceColor(BuildContext context, {double? opacity}) =>
+    Theme.of(context).colorScheme.surface.withValues(alpha: opacity ?? 1);
 
-Color glassBorderColor(BuildContext context) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return Colors.white.withValues(alpha: isDark ? 0.14 : 0.58);
-}
+Color glassBorderColor(BuildContext context) => Colors.transparent;
 
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
@@ -33,18 +24,14 @@ class GlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ClipRRect(
     borderRadius: borderRadius,
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-      child: Container(
-        margin: margin,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: glassSurfaceColor(context, opacity: opacity),
-          borderRadius: borderRadius,
-          border: Border.all(color: glassBorderColor(context)),
-        ),
-        child: child,
+    child: Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: glassSurfaceColor(context, opacity: opacity),
+        borderRadius: borderRadius,
       ),
+      child: child,
     ),
   );
 }
@@ -56,70 +43,50 @@ class AmbientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ColoredBox(
-      color: isDark ? const Color(0xFF10131B) : const Color(0xFFF4F7FF),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: dark
+              ? const [Color(0xFF131725), Color(0xFF191B2C), Color(0xFF12212B)]
+              : const [Color(0xFFF2F6FF), Color(0xFFF6F4FF), Color(0xFFEDF8FF)],
+        ),
+      ),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const _AmbientOrb(
-            alignment: Alignment(1.25, -0.82),
-            size: 330,
-            lightColor: Color(0xFF9688FF),
-            darkColor: Color(0xFF5143A5),
+          _glow(
+            const Alignment(1.1, -.7),
+            dark ? const Color(0xFF7064C8) : const Color(0xFFA79AF4),
+            dark ? .14 : .22,
           ),
-          const _AmbientOrb(
-            alignment: Alignment(-1.35, 0.08),
-            size: 390,
-            lightColor: Color(0xFF67C7F5),
-            darkColor: Color(0xFF155A82),
-          ),
-          const _AmbientOrb(
-            alignment: Alignment(1.30, 0.94),
-            size: 350,
-            lightColor: Color(0xFFF0A5D2),
-            darkColor: Color(0xFF743A68),
+          _glow(
+            const Alignment(-1.15, .65),
+            dark ? const Color(0xFF399BC4) : const Color(0xFF7DCDF4),
+            dark ? .16 : .30,
           ),
           child,
         ],
       ),
     );
   }
-}
 
-class _AmbientOrb extends StatelessWidget {
-  const _AmbientOrb({
-    required this.alignment,
-    required this.size,
-    required this.lightColor,
-    required this.darkColor,
-  });
-
-  final Alignment alignment;
-  final double size;
-  final Color lightColor;
-  final Color darkColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return IgnorePointer(
-      child: Align(
-        alignment: alignment,
-        child: ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 42, sigmaY: 42),
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: (isDark ? darkColor : lightColor).withValues(
-                alpha: isDark ? 0.24 : 0.30,
-              ),
+  Widget _glow(Alignment alignment, Color color, double opacity) =>
+      IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: alignment,
+              radius: 1.1,
+              colors: [
+                color.withValues(alpha: opacity),
+                color.withValues(alpha: 0),
+              ],
+              stops: const [0, 1],
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }

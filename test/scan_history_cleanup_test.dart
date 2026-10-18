@@ -47,4 +47,41 @@ void main() {
       ]);
     },
   );
+  test(
+    'deleting one scan preserves another user and malformed records',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('scan_delete_');
+      addTearDown(() => directory.delete(recursive: true));
+      final image = await File(
+        '${directory.path}/scan.jpg',
+      ).writeAsString('own');
+      final scan = SavedScan(
+        id: 'same-id',
+        userId: 'own',
+        imagePath: image.path,
+        createdAt: DateTime(2026),
+        acneCount: 1,
+        level: 'mild',
+        morningRoutine: '',
+        nightRoutine: '',
+        activeIngredients: '',
+        warning: '',
+      );
+      final other = jsonEncode({...scan.toJson(), 'userId': 'other'});
+      SharedPreferences.setMockInitialValues({
+        'saved_skin_scans_v1': [
+          jsonEncode(scan.toJson()),
+          other,
+          'invalid json',
+        ],
+      });
+      await ScanHistoryStore.delete(scan);
+      expect(await image.exists(), isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList('saved_skin_scans_v1'), [
+        other,
+        'invalid json',
+      ]);
+    },
+  );
 }

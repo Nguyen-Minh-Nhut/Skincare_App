@@ -1,6 +1,9 @@
+import '../profile/wardrobe_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
+import '../../widgets/health_page.dart';
+import '../../widgets/care_routine_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -130,16 +133,60 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
                   ),
                 ),
                 icon: const Icon(AppIcons.add, color: Colors.white),
-                backgroundColor: Colors.blueAccent,
+                backgroundColor: const Color(0xFF6264D9),
               ),
             )
           : null,
 
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 100, top: 50),
+        padding: const EdgeInsets.only(bottom: 130),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            HealthPageHeader(
+              title: isEn ? 'Care' : 'Chăm sóc',
+              subtitle: isEn
+                  ? 'Small habits. Lasting changes.'
+                  : 'Thói quen nhỏ. Thay đổi dài lâu.',
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: CareRoutineCard(isEnglish: isEn),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: HealthCard(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WardrobeScreen()),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isEn ? 'My skincare products' : 'Sản phẩm của tôi',
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 26),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(
+                isEn ? 'Explore products' : 'Khám phá sản phẩm',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 12),
             _buildSearchBar(isEn, isDark),
             _buildSkinProfileCard(isEn),
             const SizedBox(height: 20),
@@ -167,7 +214,7 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
             color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
             fontSize: 14,
           ),
-          prefixIcon: const Icon(AppIcons.search, color: Colors.blueAccent),
+          prefixIcon: const Icon(AppIcons.search, color: Color(0xFF6264D9)),
           suffixIcon: searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(
@@ -208,63 +255,40 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
           skinType = data['skinType'] ?? (isEn ? "Unknown" : "Chưa xác định");
         }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6B8DF2), Color(0xFF4A68F3)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: HealthCard(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.face_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isEn ? 'Your skin profile' : 'Hồ sơ da của bạn',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        skinType,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blueAccent.withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  AppIcons.faceRetouchingNatural,
-                  color: Colors.white,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEn ? "Your Skin Profile" : "Hồ sơ da của bạn",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      skinType,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         );
       },
@@ -291,11 +315,11 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? Colors.blueAccent : cardColor,
+                color: isSelected ? const Color(0xFF6264D9) : cardColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
-                      ? Colors.blueAccent
+                      ? const Color(0xFF6264D9)
                       : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                 ),
               ),
@@ -471,7 +495,7 @@ class _SuggestionsTabState extends State<SuggestionsTab> {
                               product["price"] ?? '0đ',
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Colors.blueAccent,
+                                color: Color(0xFF6264D9),
                                 fontWeight: FontWeight.bold,
                               ),
                               maxLines: 1,
@@ -583,7 +607,7 @@ class ProductDetailScreen extends StatelessWidget {
                   IconButton(
                     icon: const Icon(
                       AppIcons.editSquare,
-                      color: Colors.blueAccent,
+                      color: Color(0xFF6264D9),
                     ),
                     onPressed: () {
                       Navigator.push(
@@ -633,7 +657,7 @@ class ProductDetailScreen extends StatelessWidget {
                       child: Text(
                         _getCategoryName(product['category'] ?? '', isEn),
                         style: const TextStyle(
-                          color: Colors.blueAccent,
+                          color: Color(0xFF6264D9),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -653,11 +677,11 @@ class ProductDetailScreen extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF356FE8).withValues(alpha: 0.08),
+                        color: const Color(0xFF6264D9).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: const Color(
-                            0xFF356FE8,
+                            0xFF6264D9,
                           ).withValues(alpha: 0.14),
                         ),
                       ),
@@ -669,13 +693,13 @@ class ProductDetailScreen extends StatelessWidget {
                             height: 40,
                             decoration: BoxDecoration(
                               color: const Color(
-                                0xFF356FE8,
+                                0xFF6264D9,
                               ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               AppIcons.paymentsOutlined,
-                              color: Color(0xFF356FE8),
+                              color: Color(0xFF6264D9),
                               size: 21,
                             ),
                           ),
@@ -693,7 +717,7 @@ class ProductDetailScreen extends StatelessWidget {
                                             : 'Chưa có giá'),
                                   style: const TextStyle(
                                     fontSize: 21,
-                                    color: Color(0xFF356FE8),
+                                    color: Color(0xFF6264D9),
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -815,14 +839,14 @@ class ProductDetailScreen extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    side: const BorderSide(color: Colors.blueAccent),
+                    side: const BorderSide(color: Color(0xFF6264D9)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
                   child: const Icon(
                     AppIcons.inventory2Outlined,
-                    color: Colors.blueAccent,
+                    color: Color(0xFF6264D9),
                   ),
                 ),
               ),
@@ -832,7 +856,7 @@ class ProductDetailScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: const Color(0xFF6264D9),
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -1070,7 +1094,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.blueAccent),
+              child: CircularProgressIndicator(color: Color(0xFF6264D9)),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -1160,7 +1184,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       child: ElevatedButton(
                         onPressed: () => _uploadProduct(isEn),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF6264D9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),

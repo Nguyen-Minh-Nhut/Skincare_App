@@ -181,7 +181,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       child: ElevatedButton(
                         onPressed: _uploadProduct,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF6264D9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),

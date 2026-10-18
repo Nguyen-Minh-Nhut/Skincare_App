@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.0+5
+version: 2.0.0+6
 
 environment:
   sdk: ^3.11.5
@@ -75,6 +75,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
+    - assets/brands/
     - assets/models/acne_detector.tflite
     - assets/models/model_phan_loai_mun.tflite
     - assets/image/Meow.png
@@ -93,15 +94,13 @@ flutter_icons:
   image_path: "assets/image/Meow.png"
 
 flutter_native_splash:
-  color: "#1A1A1A" # Màu nền của màn hình chờ (ví dụ màu tối, hoặc đổi thành "#FFFFFF" nếu thích nền trắng)
-  image: "assets/image/Meow.png" # Logo chính giữa
-  branding: "assets/image/Meow.png" # (Tùy chọn) Logo nhỏ ở dưới đáy, có thể bỏ dòng này nếu không thích
+  # Keep the native launch screen minimal while Flutter initializes.
+  color: "#F2F6FF"
 
   android_12:
-    color: "#1A1A1A"
-    image: "assets/image/Meow.png"
+    color: "#F2F6FF"
 
-  fullscreen: true
+  fullscreen: false
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -309,34 +309,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _buildListTile(
-                isEn ? "Privacy & Reporting" : "Quyền riêng tư & Báo cáo",
-                AppIcons.shieldRounded,
-                iconColor: const Color(0xFF399BC8),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isEn
-                          ? 'Privacy settings'
-                          : 'Mở trang Quản lý chặn/Báo cáo',
-                    ),
-                  ),
-                ),
-              ),
-              _buildListTile(
-                isEn ? "Transaction Info" : "Thông tin giao dịch",
-                AppIcons.receiptLongRounded,
-                iconColor: const Color(0xFFF39B45),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isEn
-                          ? 'No premium history'
-                          : 'Chưa có lịch sử giao dịch Premium',
-                    ),
-                  ),
-                ),
-              ),
-              _buildListTile(
                 isEn ? "Delete Account" : "Xóa tài khoản",
                 AppIcons.personRemoveOutlined,
                 color: Colors.redAccent,
@@ -387,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 30),
             Center(
               child: Text(
-                isEn ? "Version 1.0.0 (Beta)" : "Phiên bản 1.0.0 (Beta)",
+                isEn ? "Version 2.0.0 (Build 6)" : "Phiên bản 2.0.0 (Build 6)",
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
@@ -549,7 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (isSelected)
             const Icon(
               AppIcons.checkCircleRounded,
-              color: Color(0xFF356FE8),
+              color: Color(0xFF6264D9),
               size: 21,
             ),
         ],
@@ -562,7 +534,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     height: 30,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: selected ? const Color(0xFF356FE8) : const Color(0xFFF0F3F8),
+      color: selected ? const Color(0xFF6264D9) : const Color(0xFFF0F3F8),
       borderRadius: BorderRadius.circular(9),
     ),
     child: Text(

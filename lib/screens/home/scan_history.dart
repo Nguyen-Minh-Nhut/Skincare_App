@@ -115,7 +115,10 @@ class ScanHistoryStore {
     final prefs = await SharedPreferences.getInstance();
     final items = [...prefs.getStringList(_storageKey) ?? const <String>[]];
     items.add(jsonEncode(scan.toJson()));
-    await prefs.setStringList(_storageKey, items);
+    if (!await prefs.setStringList(_storageKey, items)) {
+      await savedImage.delete();
+      throw StateError('Could not save local scan history');
+    }
     return scan;
   }
 
@@ -151,12 +154,15 @@ class ScanHistoryStore {
     final items = prefs.getStringList(_storageKey) ?? const [];
     final retained = items.where((raw) {
       try {
-        return (jsonDecode(raw) as Map<String, dynamic>)['id'] != scan.id;
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        return data['id'] != scan.id || data['userId'] != scan.userId;
       } catch (_) {
-        return false;
+        return true;
       }
     }).toList();
-    await prefs.setStringList(_storageKey, retained);
+    if (!await prefs.setStringList(_storageKey, retained)) {
+      throw StateError('Could not remove local scan history');
+    }
     final image = File(scan.imagePath);
     if (await image.exists()) await image.delete();
   }

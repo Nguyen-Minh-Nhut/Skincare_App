@@ -53,6 +53,9 @@ class AccountDeletion {
     }
     await ScanHistoryStore.deleteForUser(user.uid);
     final prefs = await SharedPreferences.getInstance();
+    if (!await prefs.remove('care_routine_v1_${user.uid}')) {
+      throw StateError('Could not remove local routine');
+    }
     if (!await prefs.remove('meow_sessions_${user.uid}')) {
       throw StateError('Could not remove local chat history');
     }

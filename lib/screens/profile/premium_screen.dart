@@ -38,12 +38,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
       "desc":
           "Kết nối Video Call trực tiếp 1-1 với bác sĩ da liễu và các chuyên gia hàng đầu.",
       "icon": AppIcons.videoCameraFront,
-      "color": Colors.blueAccent,
+      "color": const Color(0xFF6264D9),
     },
     {
       "title": "Ad-free & Cloud Sync",
       "desc":
-          "Trải nghiệm mượt mà không quảng cáo. Sao lưu toàn bộ nhật ký da lên mây vĩnh viễn.",
+          "Các công cụ chăm sóc da bổ sung đang được hoàn thiện.",
       "icon": AppIcons.cloudDone,
       "color": Colors.green,
     },

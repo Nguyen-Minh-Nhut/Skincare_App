@@ -23,6 +23,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool isLogin = true;
   bool isLoading = false;
+  bool _passwordVisible = false;
 
   final TextEditingController _loginIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -452,7 +453,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: _showForgotPasswordDialog,
                                 child: const Text(
                                   'Quên mật khẩu?',
-                                  style: TextStyle(color: Colors.blueAccent),
+                                  style: TextStyle(color: Color(0xFF6264D9)),
                                 ),
                               ),
                             )
@@ -463,14 +464,14 @@ class _AuthScreenState extends State<AuthScreen> {
                             onPressed: isLoading ? null : _submitAuth,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.blueAccent,
+                              backgroundColor: const Color(0xFF6264D9),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               elevation: 5,
-                              shadowColor: Colors.blueAccent.withValues(
-                                alpha: 0.4,
-                              ),
+                              shadowColor: const Color(
+                                0xFF6264D9,
+                              ).withValues(alpha: 0.4),
                             ),
                             child: isLoading
                                 ? const SizedBox(
@@ -512,16 +513,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 16),
                             _buildSocialButton(
                               label: 'Tiếp tục với Google',
-                              brand: 'G',
-                              color: const Color(0xFF4285F4),
+                              logoAsset: 'assets/brands/google.png',
                               onPressed: _signInWithGoogle,
                             ),
                             const SizedBox(height: 10),
                             _buildSocialButton(
                               label: 'Tiếp tục với Facebook',
-                              brand: 'f',
-                              color: const Color(0xFF1877F2),
-                              badge: 'Sắp ra mắt',
+                              logoAsset: 'assets/brands/facebook.png',
                               onPressed: _signInWithFacebook,
                             ),
                             const SizedBox(height: 8),
@@ -540,6 +538,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: () {
                                   setState(() {
                                     isLogin = !isLogin;
+                                    _passwordVisible = false;
                                     _loginIdController.clear();
                                     _passwordController.clear();
                                     _nameController.clear();
@@ -550,7 +549,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   isLogin ? 'Đăng ký ngay' : 'Đăng nhập',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blueAccent,
+                                    color: Color(0xFF6264D9),
                                   ),
                                 ),
                               ),
@@ -584,10 +583,25 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       child: TextField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPassword && !_passwordVisible,
+        autocorrect: !isPassword,
+        enableSuggestions: !isPassword,
         keyboardType: keyboardType,
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.grey),
+          suffixIcon: isPassword
+              ? IconButton(
+                  tooltip: _passwordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu',
+                  onPressed: () =>
+                      setState(() => _passwordVisible = !_passwordVisible),
+                  icon: Icon(
+                    _passwordVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: Colors.grey,
+                  ),
+                )
+              : null,
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           border: InputBorder.none,
@@ -602,10 +616,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildSocialButton({
     required String label,
-    required String brand,
-    required Color color,
+    required String logoAsset,
     required VoidCallback onPressed,
-    String? badge,
   }) {
     return Material(
       color: Colors.white.withValues(alpha: 0.78),
@@ -622,19 +634,16 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Text(
-                  brand,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: brand == 'f' ? 24 : 17,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: brand == 'f' ? 'Arial' : null,
+              SizedBox.square(
+                dimension: 28,
+                child: Image.asset(
+                  logoAsset,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                  errorBuilder: (_, _, _) => const Icon(
+                    Icons.image_not_supported_outlined,
+                    size: 22,
+                    color: Colors.grey,
                   ),
                 ),
               ),
@@ -649,31 +658,11 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
               ),
-              if (badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    badge,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                Icon(
-                  AppIcons.chevronRight,
-                  size: 15,
-                  color: Colors.grey.shade500,
-                ),
+              Icon(
+                AppIcons.chevronRight,
+                size: 15,
+                color: Colors.grey.shade500,
+              ),
             ],
           ),
         ),

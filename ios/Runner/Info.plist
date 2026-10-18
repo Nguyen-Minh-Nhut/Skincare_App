@@ -12,6 +12,16 @@
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>skincare_app</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -24,33 +34,23 @@
 				</array>
 			</dict>
 		</array>
-        <key>FacebookAppID</key>
-        <string>964346813363293</string>
-        <key>FacebookClientToken</key>
-        <string>a4051a02dcdcfd2f027dd1a934c8c0cd</string>
-        <key>FacebookDisplayName</key>
-        <string>Skincare App</string>
-        <key>FacebookAutoLogAppEventsEnabled</key>
-        <false/>
-        <key>FacebookAdvertiserIDCollectionEnabled</key>
-        <false/>
-        <key>LSApplicationQueriesSchemes</key>
-        <array>
-            <string>fbapi</string>
-            <string>fb-messenger-share-api</string>
-        </array>
-		<key>CFBundleInfoDictionaryVersion</key>
-		<string>6.0</string>
-		<key>CFBundleName</key>
-		<string>skincare_app</string>
-		<key>CFBundlePackageType</key>
-		<string>APPL</string>
-		<key>CFBundleShortVersionString</key>
-		<string>$(FLUTTER_BUILD_NAME)</string>
-		<key>CFBundleSignature</key>
-		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>FacebookAdvertiserIDCollectionEnabled</key>
+		<false/>
+		<key>FacebookAppID</key>
+		<string>964346813363293</string>
+		<key>FacebookAutoLogAppEventsEnabled</key>
+		<false/>
+		<key>FacebookClientToken</key>
+		<string>a4051a02dcdcfd2f027dd1a934c8c0cd</string>
+		<key>FacebookDisplayName</key>
+		<string>Skincare App</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fb-messenger-share-api</string>
+		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSLocationWhenInUseUsageDescription</key>
@@ -82,6 +82,8 @@
 		<string>LaunchScreen</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
+		<key>UIStatusBarHidden</key>
+		<false/>
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
@@ -95,8 +97,6 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
-		<key>UIStatusBarHidden</key>
-		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
 	</dict>

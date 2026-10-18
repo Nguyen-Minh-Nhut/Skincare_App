@@ -107,7 +107,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
             const Icon(
               AppIcons.addShoppingCart,
               size: 40,
-              color: Colors.blueAccent,
+              color: Color(0xFF6264D9),
             ),
             const SizedBox(height: 10),
             Text(
@@ -189,7 +189,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
+              backgroundColor: const Color(0xFF6264D9),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -267,7 +267,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.blueAccent,
+            color: Color(0xFF6264D9),
           ),
         ),
         content: TextField(
@@ -302,7 +302,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
             ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6264D9),
+            ),
             onPressed: () {
               Navigator.pop(context);
               if (barcodeCtrl.text.isNotEmpty) {
@@ -360,7 +362,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         onLongPress: () => _showManualBarcodeDialog(isEn, isDark),
         child: FloatingActionButton.extended(
           onPressed: () => _startBarcodeScan(isEn),
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: const Color(0xFF6264D9),
           icon: _isScanning
               ? const SizedBox(
                   width: 20,
@@ -400,7 +402,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(color: Colors.blueAccent),
+                    child: CircularProgressIndicator(color: Color(0xFF6264D9)),
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -533,7 +535,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       width: 60,
       height: 60,
       color: Colors.blue.withValues(alpha: 0.15),
-      child: const Icon(AppIcons.localFlorist, color: Colors.blueAccent),
+      child: const Icon(AppIcons.localFlorist, color: Color(0xFF6264D9)),
     );
   }
 }

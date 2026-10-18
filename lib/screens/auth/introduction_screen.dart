@@ -70,7 +70,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               const Icon(
                 AppIcons.autoAwesome,
                 size: 70,
-                color: Colors.blueAccent,
+                color: Color(0xFF6264D9),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -85,7 +85,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               ),
               const SizedBox(height: 15),
               const Text(
-                "Ứng dụng sẽ đồng hành cùng bạn trong hành trình theo dõi làn da, nhật ký mụn và tư vấn routine chuẩn y khoa cùng bác sĩ ảo Meow AI.",
+                "Theo dõi kết quả làn da đã lưu và xây dựng thói quen chăm sóc mỗi ngày cùng MeowSkin.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
               ),
@@ -123,11 +123,11 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
                       ),
                     ),
                     selected: isSelected,
-                    selectedColor: Colors.blueAccent,
+                    selectedColor: const Color(0xFF6264D9),
                     backgroundColor: Colors.grey.shade100,
                     side: BorderSide(
                       color: isSelected
-                          ? Colors.blueAccent
+                          ? const Color(0xFF6264D9)
                           : Colors.grey.shade300,
                     ),
                     shape: RoundedRectangleBorder(
@@ -149,7 +149,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
                 onPressed: _isLoading ? null : _finishIntroduction,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blueAccent,
+                  backgroundColor: const Color(0xFF6264D9),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

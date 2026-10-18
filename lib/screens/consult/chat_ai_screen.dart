@@ -318,12 +318,12 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
             ListTile(
               leading: const Icon(
                 AppIcons.editSquare,
-                color: Colors.blueAccent,
+                color: Color(0xFF6264D9),
               ),
               title: Text(
                 isEn ? "New conversation" : "Cuộc trò chuyện mới",
                 style: const TextStyle(
-                  color: Colors.blueAccent,
+                  color: Color(0xFF6264D9),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -440,7 +440,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.blueAccent.shade200,
+              color: const Color(0xFFB8B5FF),
             ),
           ),
           Text(
@@ -696,11 +696,11 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
           margin: const EdgeInsets.symmetric(vertical: 10),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.blueAccent,
+            color: const Color(0xFF6264D9),
             borderRadius: BorderRadius.circular(25),
             boxShadow: [
               BoxShadow(
-                color: Colors.blueAccent.withValues(alpha: 0.2),
+                color: const Color(0xFF6264D9).withValues(alpha: 0.2),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -720,7 +720,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
           children: [
             const Icon(
               AppIcons.autoAwesome,
-              color: Colors.blueAccent,
+              color: Color(0xFF6264D9),
               size: 24,
             ),
             const SizedBox(width: 15),
@@ -747,7 +747,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                           size: 20,
                         ),
                         color: msg['isLiked'] == true
-                            ? Colors.blueAccent
+                            ? const Color(0xFF6264D9)
                             : Colors.grey.shade500,
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.only(right: 15),
@@ -858,7 +858,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 IconButton(
                   icon: const Icon(
                     AppIcons.addCircleOutline,
-                    color: Colors.blueAccent,
+                    color: Color(0xFF6264D9),
                   ),
                   onPressed: () {},
                 ),
@@ -883,7 +883,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 IconButton(
                   icon: Icon(
                     AppIcons.send,
-                    color: _isLoading ? Colors.grey : Colors.blueAccent,
+                    color: _isLoading ? Colors.grey : const Color(0xFF6264D9),
                   ),
                   onPressed: _isLoading ? null : _sendMessage,
                 ),

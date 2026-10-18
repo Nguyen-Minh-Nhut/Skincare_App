@@ -57,7 +57,7 @@ class NotificationScreen extends StatelessWidget {
         elevation: 0.5,
         actions: [
           IconButton(
-            icon: const Icon(AppIcons.doneAll, color: Colors.blueAccent),
+            icon: const Icon(AppIcons.doneAll, color: Color(0xFF6264D9)),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -87,7 +87,7 @@ class NotificationScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(color: Colors.blueAccent),
+                    child: CircularProgressIndicator(color: Color(0xFF6264D9)),
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -126,7 +126,7 @@ class NotificationScreen extends StatelessWidget {
                     String type = data['type'] ?? 'system';
 
                     IconData iconData = AppIcons.notifications;
-                    Color iconColor = Colors.blueAccent;
+                    Color iconColor = const Color(0xFF6264D9);
 
                     if (type == 'like') {
                       iconData = AppIcons.favorite;

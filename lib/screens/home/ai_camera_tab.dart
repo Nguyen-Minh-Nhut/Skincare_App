@@ -193,7 +193,7 @@ class _AiCameraTabState extends State<AiCameraTab>
         actions: [
           if (_imageFile != null)
             IconButton(
-              icon: const Icon(AppIcons.refresh, color: Colors.blueAccent),
+              icon: const Icon(AppIcons.refresh, color: Color(0xFF6264D9)),
               onPressed: _resetCamera,
             ),
         ],
@@ -219,7 +219,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                 child: const Icon(
                   AppIcons.faceRetouchingNatural,
                   size: 80,
-                  color: Colors.blueAccent,
+                  color: Color(0xFF6264D9),
                 ),
               ),
               const SizedBox(height: 30),
@@ -292,12 +292,14 @@ class _AiCameraTabState extends State<AiCameraTab>
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF6264D9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
                           elevation: 5,
-                          shadowColor: Colors.blueAccent.withValues(alpha: 0.4),
+                          shadowColor: const Color(
+                            0xFF6264D9,
+                          ).withValues(alpha: 0.4),
                         ),
                       ),
                     ),
@@ -312,14 +314,14 @@ class _AiCameraTabState extends State<AiCameraTab>
                             : null,
                         icon: const Icon(
                           AppIcons.photoLibrary,
-                          color: Colors.blueAccent,
+                          color: Color(0xFF6264D9),
                         ),
                         label: const Text(
                           'Thư viện',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blueAccent,
+                            color: Color(0xFF6264D9),
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -327,7 +329,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: const BorderSide(
-                              color: Colors.blueAccent,
+                              color: Color(0xFF6264D9),
                               width: 1.5,
                             ),
                           ),
@@ -443,12 +445,12 @@ class _AiCameraTabState extends State<AiCameraTab>
           if (_isScanning)
             const Column(
               children: [
-                CircularProgressIndicator(color: Colors.blueAccent),
+                CircularProgressIndicator(color: Color(0xFF6264D9)),
                 SizedBox(height: 15),
                 Text(
                   "Trí tuệ nhân tạo đang phân tích...",
                   style: TextStyle(
-                    color: Colors.blueAccent,
+                    color: Color(0xFF6264D9),
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -512,7 +514,7 @@ class _AiCameraTabState extends State<AiCameraTab>
                   "5 Trạng thái",
                   "Phân loại",
                   AppIcons.category,
-                  Colors.blueAccent,
+                  const Color(0xFF6264D9),
                 ),
               ),
               const SizedBox(width: 15),
@@ -548,11 +550,11 @@ class _AiCameraTabState extends State<AiCameraTab>
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                    color: Colors.blueAccent.withValues(alpha: 0.3),
+                    color: const Color(0xFF6264D9).withValues(alpha: 0.3),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blueAccent.withValues(alpha: 0.05),
+                      color: const Color(0xFF6264D9).withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -640,13 +642,13 @@ class _AiCameraTabState extends State<AiCameraTab>
                   );
                 }
               },
-              icon: const Icon(AppIcons.saveAlt, color: Colors.blueAccent),
+              icon: const Icon(AppIcons.saveAlt, color: Color(0xFF6264D9)),
               label: const Text(
                 'Lưu kết quả này',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
+                  color: Color(0xFF6264D9),
                 ),
               ),
               style: ElevatedButton.styleFrom(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:skincare_app/widgets/app_icons.dart';
 import '../../widgets/ambient_background.dart';
+import '../../widgets/health_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -54,8 +55,6 @@ class _ConsultTabState extends State<ConsultTab> {
     final isEn = appProvider.isEnglish;
     final isDark = appProvider.isDarkMode;
 
-    final textColor = isDark ? Colors.white : Colors.black87;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
 
@@ -71,7 +70,7 @@ class _ConsultTabState extends State<ConsultTab> {
               color: Colors.white,
             ),
           ),
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: const Color(0xFF6264D9),
         ),
       ),
 
@@ -82,20 +81,51 @@ class _ConsultTabState extends State<ConsultTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              HealthPageHeader(
+                title: isEn ? 'Community' : 'Cộng đồng',
+                subtitle: isEn
+                    ? 'Share a little. Care together.'
+                    : 'Cùng chia sẻ, cùng chăm da.',
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  isEn ? "Skincare Community" : "Cộng đồng Skincare",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: textColor,
+                child: HealthCard(
+                  onTap: () => _showCreatePostSheet(context, isEn, isDark),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: .10),
+                        child: Icon(
+                          Icons.person_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          isEn
+                              ? 'How is your skin today?'
+                              : 'Hôm nay da bạn thế nào?',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.add_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 12),
               _buildAIChatBanner(context, isEn),
-              const SizedBox(height: 25),
+              const SizedBox(height: 24),
               _buildFilters(isEn, isDark),
               const SizedBox(height: 15),
               _buildCommunityFeed(isEn, isDark),
@@ -106,93 +136,49 @@ class _ConsultTabState extends State<ConsultTab> {
     );
   }
 
-  Widget _buildAIChatBanner(BuildContext context, bool isEn) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isEn
-                  ? 'AI chat is temporarily unavailable.'
-                  : 'Chat AI đang tạm thời ngừng hoạt động.',
-            ),
+  Widget _buildAIChatBanner(BuildContext context, bool isEn) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: HealthCard(
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn
+                ? 'AI chat is temporarily unavailable.'
+                : 'Chat AI đang tạm thời ngừng hoạt động.',
           ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1E293B), Color(0xFF334155)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Icon(
-                AppIcons.autoAwesome,
-                color: Colors.blueAccent,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isEn
-                        ? "AI Dermatologist (Maintenance)"
-                        : "Trợ lý da liễu AI (Đang bảo trì)",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isEn
-                        ? "This feature will be available again soon"
-                        : "Tính năng sẽ sớm hoạt động trở lại",
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                AppIcons.lockClockOutlined,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ],
         ),
       ),
-    );
-  }
+      child: Row(
+        children: [
+          Icon(
+            Icons.auto_awesome_outlined,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEn ? 'Meow AI assistant' : 'Trợ lý Meow AI',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isEn ? 'Under maintenance' : 'Đang bảo trì',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, size: 20),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildFilters(bool isEn, bool isDark) {
     return SizedBox(
@@ -211,12 +197,12 @@ class _ConsultTabState extends State<ConsultTab> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.blueAccent
+                    ? const Color(0xFF6264D9)
                     : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
-                      ? Colors.blueAccent
+                      ? const Color(0xFF6264D9)
                       : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                 ),
               ),
@@ -247,7 +233,7 @@ class _ConsultTabState extends State<ConsultTab> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(color: Colors.blueAccent),
+            child: CircularProgressIndicator(color: Color(0xFF6264D9)),
           );
         }
         if (snapshot.hasError) {
@@ -505,7 +491,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                 child: Text(
                   userName[0].toUpperCase(),
                   style: const TextStyle(
-                    color: Colors.blueAccent,
+                    color: Color(0xFF6264D9),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -604,7 +590,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                         children: [
                           const Icon(
                             AppIcons.addPhotoAlternateOutlined,
-                            color: Colors.blueAccent,
+                            color: Color(0xFF6264D9),
                           ),
                           const SizedBox(width: 10),
                           Text(
@@ -643,7 +629,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _submitPost,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
+                backgroundColor: const Color(0xFF6264D9),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -946,7 +932,7 @@ class _PostCardState extends State<PostCard> {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(
-                          color: Colors.blueAccent,
+                          color: Color(0xFF6264D9),
                         ),
                       );
                     }
@@ -1002,7 +988,7 @@ class _PostCardState extends State<PostCard> {
                                   (comment['userName'] ?? "U")[0].toUpperCase(),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blueAccent,
+                                    color: Color(0xFF6264D9),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1128,7 +1114,7 @@ class _PostCardState extends State<PostCard> {
                         : Colors.grey.shade400,
                   ),
                   suffixIcon: IconButton(
-                    icon: const Icon(AppIcons.send, color: Colors.blueAccent),
+                    icon: const Icon(AppIcons.send, color: Color(0xFF6264D9)),
                     onPressed: () async {
                       if (commentCtrl.text.trim().isEmpty ||
                           commentCtrl.text.trim().length > 1000) {
@@ -1234,7 +1220,7 @@ class _PostCardState extends State<PostCard> {
                         userName[0].toUpperCase(),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
+                          color: Color(0xFF6264D9),
                           fontSize: 16,
                         ),
                       )
@@ -1286,7 +1272,7 @@ class _PostCardState extends State<PostCard> {
                 child: Text(
                   _getFilterName(data['tag']),
                   style: const TextStyle(
-                    color: Colors.blueAccent,
+                    color: Color(0xFF6264D9),
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1366,7 +1352,9 @@ class _PostCardState extends State<PostCard> {
                   IconButton(
                     icon: Icon(
                       isLiked ? AppIcons.thumbUp : AppIcons.thumbUpAltOutlined,
-                      color: isLiked ? Colors.blueAccent : Colors.grey.shade500,
+                      color: isLiked
+                          ? const Color(0xFF6264D9)
+                          : Colors.grey.shade500,
                       size: 20,
                     ),
                     onPressed: _toggleLike,
@@ -1374,7 +1362,9 @@ class _PostCardState extends State<PostCard> {
                   Text(
                     "$likes",
                     style: TextStyle(
-                      color: isLiked ? Colors.blueAccent : Colors.grey.shade500,
+                      color: isLiked
+                          ? const Color(0xFF6264D9)
+                          : Colors.grey.shade500,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -1,17 +1,28 @@
-# Skincare App
+# Skincare App 2.0
 
 Ứng dụng Flutter hỗ trợ theo dõi tình trạng da, phát hiện vùng nghi ngờ mụn trên ảnh và lưu lịch sử phân tích. Kết quả chỉ mang tính tham khảo, không thay thế chẩn đoán hoặc tư vấn của bác sĩ da liễu.
+
+**Phiên bản:** `2.0.0+6` · [Chi tiết thay đổi bản 2.0](CHANGELOG.md#200---2026-10-19).
 
 ## Chức năng chính
 
 - Đăng ký, đăng nhập và quản lý hồ sơ với Firebase.
-- Chụp ảnh hoặc chọn ảnh từ thiết bị.
+- Theo dõi kết quả và lịch sử đã lưu. Chụp/quét AI đang bảo trì trong giao diện chính.
 - Phát hiện vùng nghi ngờ bằng YOLO11m chạy cục bộ.
 - Kết hợp YOLO11m và MobileNetV2 để giảm nhận diện thiếu, trùng và dương tính giả.
 - Loại bounding box trùng bằng Non-Maximum Suppression.
 - Hiển thị, lưu và xem lại lịch sử phân tích.
 - Giao diện tiếng Việt/tiếng Anh, chế độ sáng/tối.
-- Trợ lý tư vấn chăm sóc da bằng Gemini khi được cấu hình khóa API.
+- Mã nguồn trợ lý Gemini được giữ lại; không nằm trong luồng chính của bản 2.0.
+
+## Giao diện
+
+- Điều hướng chính gồm Hôm nay, Theo dõi da, Chăm sóc và Cá nhân.
+- Hôm nay hiển thị kết quả gần nhất và tiến độ sáng/tối; mở Chăm sóc để đánh dấu hoặc chỉnh routine.
+- Theo dõi da tập trung biểu đồ số nốt và lịch sử đã lưu. Quét AI vẫn đang bảo trì và được ghi rõ ở lối vào.
+- Chăm sóc là nơi quản lý routine và sản phẩm. Cá nhân chứa hồ sơ da, tài khoản và cài đặt.
+- Cộng đồng, thông báo cộng đồng và MeowSkin Plus tạm ẩn khỏi luồng chính; mã nguồn và dữ liệu được giữ lại.
+- Checklist lưu cục bộ theo tài khoản, dùng chung trạng thái giữa các mục.
 
 ## Pipeline AI
 

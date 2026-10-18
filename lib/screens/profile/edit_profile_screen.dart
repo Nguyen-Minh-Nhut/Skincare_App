@@ -231,7 +231,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ? const Icon(
                                 AppIcons.person,
                                 size: 50,
-                                color: Colors.blueAccent,
+                                color: Color(0xFF6264D9),
                               )
                             : null,
                       ),
@@ -340,7 +340,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ElevatedButton(
                         onPressed: isLoading ? null : () => _saveProfile(isEn),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF6264D9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -427,7 +427,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           Icon(
             AppIcons.editOutlined,
-            color: Colors.blueAccent.withValues(alpha: 0.75),
+            color: const Color(0xFF6264D9).withValues(alpha: 0.75),
             size: 19,
           ),
         ],
@@ -507,7 +507,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           Icon(
             AppIcons.keyboardArrowDownRounded,
-            color: Colors.blueAccent.withValues(alpha: 0.75),
+            color: const Color(0xFF6264D9).withValues(alpha: 0.75),
           ),
         ],
       ),

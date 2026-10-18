@@ -173,7 +173,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                 value: progress,
                 minHeight: 6, // Làm thanh trượt mỏng lại
                 backgroundColor: Colors.grey.shade100,
-                valueColor: const AnimationValueColor<Color>(Colors.blueAccent),
+                valueColor: const AnimationValueColor<Color>(Color(0xFF6264D9)),
               ),
             ),
           ),
@@ -210,7 +210,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.blueAccent,
+              color: Color(0xFF6264D9),
             ),
           ),
           const SizedBox(height: 8),
@@ -249,16 +249,16 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
-                              ? Colors.blueAccent
+                              ? const Color(0xFF6264D9)
                               : Colors.grey.shade200,
                           width: 1.5,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: Colors.blueAccent.withValues(
-                                    alpha: 0.1,
-                                  ),
+                                  color: const Color(
+                                    0xFF6264D9,
+                                  ).withValues(alpha: 0.1),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -284,7 +284,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                           if (isSelected)
                             const Icon(
                               AppIcons.checkCircle,
-                              color: Colors.blueAccent,
+                              color: Color(0xFF6264D9),
                               size: 20,
                             ),
                         ],
@@ -319,7 +319,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         child: ElevatedButton(
           onPressed: (isOptionSelected && !_isLoading) ? _nextStep : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
+            backgroundColor: const Color(0xFF6264D9),
             disabledBackgroundColor: Colors.grey.shade200,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
