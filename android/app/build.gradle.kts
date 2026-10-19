@@ -96,6 +96,7 @@ flutter {
 }
 
 dependencies {
+    implementation("com.google.mlkit:face-detection:16.1.7")
     // Thư viện hỗ trợ desugaring cho Android
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     legacyLiteRtNative("com.google.ai.edge.litert:litert:1.4.0@aar")

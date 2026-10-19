@@ -64,3 +64,15 @@ node_modules/
 
 # Firebase local deployment cache
 .firebase/
+
+# Local AI test runtime
+.venv-ai/
+
+# Local AI server process and logs
+.scan-browser/
+
+# Local user image evaluation reports
+deliverables/acne-test-*/
+
+# Local signed app packages
+deliverables/releases/

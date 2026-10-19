@@ -71,8 +71,8 @@ class _ScanTrendCardState extends State<ScanTrendCard> {
               const SizedBox(height: 10),
               Text(
                 en
-                    ? 'Saved scans will appear here. AI scanning is being completed.'
-                    : 'Các lần quét đã lưu sẽ xuất hiện tại đây. Quét AI đang được hoàn thiện.',
+                    ? 'Saved scans will appear here. Open the experimental scan to add a result.'
+                    : 'Các lần quét đã lưu sẽ xuất hiện tại đây. Mở quét thử nghiệm để thêm kết quả.',
                 style: TextStyle(
                   color: dark ? Colors.white60 : const Color(0xFF898992),
                   height: 1.5,

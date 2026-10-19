@@ -359,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 30),
             Center(
               child: Text(
-                isEn ? "Version 2.0.0 (Build 6)" : "Phiên bản 2.0.0 (Build 6)",
+                isEn ? "Version 2.0.1 (Build 7)" : "Phiên bản 2.0.1 (Build 7)",
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),

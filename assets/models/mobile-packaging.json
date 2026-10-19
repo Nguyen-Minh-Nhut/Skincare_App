@@ -1,0 +1,15 @@
+{
+  "source_sha256": "d2e611fa60ca7e57022ed7377186b965a773932851548018f84be7faedbf153e",
+  "target_sha256": "4078f29ad4deff29e3762198d65b4aba6007d23ded7b48c08ad9731db138a2e9",
+  "buffers_inlined": 157,
+  "size_bytes": 20731696,
+  "max_absolute_output_difference": 0.0,
+  "verification_runtime": "TensorFlow 2.20.0 CPU",
+  "verification_input_seed": 201,
+  "verification_input_shape": [
+    1,
+    3,
+    640,
+    640
+  ]
+}

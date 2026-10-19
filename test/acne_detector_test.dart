@@ -2,6 +2,69 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skincare_app/screens/home/acne_detector.dart';
 
 void main() {
+  test(
+    'NCHW YOLO output is decoded using normalized xywh and letterbox offsets',
+    () {
+      final boxes = decodeYoloTensor(
+        [
+          [.5],
+          [.5],
+          [.1],
+          [.1],
+          [.9],
+        ],
+        imageWidth: 1000,
+        imageHeight: 500,
+      );
+      expect(boxes, hasLength(1));
+      expect(boxes.first.left, closeTo(450, .001));
+      expect(boxes.first.top, closeTo(200, .001));
+      expect(boxes.first.width, closeTo(100, .001));
+      expect(boxes.first.height, closeTo(100, .001));
+      final portrait = decodeYoloTensor(
+        [
+          [.5],
+          [.5],
+          [.1],
+          [.1],
+          [.9],
+        ],
+        imageWidth: 500,
+        imageHeight: 1000,
+      );
+      expect(portrait.first.left, closeTo(200, .001));
+      expect(portrait.first.top, closeTo(450, .001));
+    },
+  );
+  test(
+    'raw YOLO decoder rejects malformed output and suppresses duplicates',
+    () {
+      expect(
+        () => decodeYoloTensor(
+          [
+            [.5],
+          ],
+          imageWidth: 640,
+          imageHeight: 640,
+        ),
+        throwsFormatException,
+      );
+      final boxes = decodeYoloTensor(
+        [
+          [.5, .5, double.nan],
+          [.5, .5, .5],
+          [.05, .05, .05],
+          [.05, .05, .05],
+          [.9, .8, .9],
+        ],
+        imageWidth: 640,
+        imageHeight: 640,
+      );
+      expect(boxes, hasLength(1));
+      expect(boxes.first.confidence, .9);
+    },
+  );
+
   group('shouldKeepAcneDetection', () {
     test('rejects a strong YOLO detection when classifier disagrees', () {
       expect(

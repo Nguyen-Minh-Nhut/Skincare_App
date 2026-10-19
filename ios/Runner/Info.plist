@@ -53,6 +53,10 @@
 		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>Chụp ảnh da để phân tích các vùng nghi ngờ trên thiết bị.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Chọn ảnh da để phân tích và lưu kết quả trên thiết bị.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Ứng dụng dùng vị trí hiện tại để hiển thị chỉ số UV chính xác tại khu vực của bạn.</string>
 		<key>UIApplicationSceneManifest</key>

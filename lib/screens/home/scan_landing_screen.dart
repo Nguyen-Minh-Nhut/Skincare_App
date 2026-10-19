@@ -1,3 +1,4 @@
+import 'ai_camera_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'scan_history.dart';
@@ -7,7 +8,7 @@ import '../app_provider.dart';
 import '../profile/scan_history_screen.dart';
 import '../../widgets/health_page.dart';
 
-/// Live version of the preview scan page. The detector remains under maintenance.
+/// Tracking overview with an explicit experimental native scan entry.
 class ScanLandingScreen extends StatefulWidget {
   const ScanLandingScreen({super.key});
   @override
@@ -22,7 +23,14 @@ class _ScanLandingScreenState extends State<ScanLandingScreen> {
   @override
   void initState() {
     super.initState();
+    ScanHistoryStore.changes.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    ScanHistoryStore.changes.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -119,9 +127,7 @@ class _ScanLandingScreenState extends State<ScanLandingScreen> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        en
-                            ? 'AI scanning under maintenance'
-                            : 'Quét AI đang bảo trì',
+                        en ? 'Try AI skin scanning' : 'Thử quét da cùng AI',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 22,
@@ -145,20 +151,28 @@ class _ScanLandingScreenState extends State<ScanLandingScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: null,
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AiCameraTab(),
+                              ),
+                            );
+                            if (mounted) await _load();
+                          },
                           icon: const Icon(Icons.camera_alt_outlined, size: 20),
                           label: Text(
                             en
-                                ? 'Scanning under maintenance'
-                                : 'Quét da đang bảo trì',
+                                ? 'Open experimental scan'
+                                : 'Mở quét thử nghiệm',
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         en
-                            ? 'AI scanning is being completed and tested. You can still view your saved results.'
-                            : 'Quét AI đang được hoàn thiện và kiểm thử. Bạn vẫn có thể xem các kết quả đã lưu.',
+                            ? 'Experimental: detect suspected spots and save results. Browser testing uses the separate local AI runner.'
+                            : 'Bản thử nghiệm: nhận diện vùng nghi ngờ và lưu kết quả. Kiểm thử trình duyệt dùng trang AI cục bộ riêng.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

@@ -4,7 +4,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
+import '../../services/google_sign_in_service.dart';
 import '../main_screens.dart';
 import 'introduction_screen.dart';
 import 'password_reset_dialog.dart';
@@ -230,17 +231,8 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => isLoading = true);
 
     try {
-      final googleUser = await GoogleSignIn().signIn().timeout(_authTimeout);
-      if (googleUser == null) return;
-
-      final googleAuth = await googleUser.authentication.timeout(_authTimeout);
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      final result = await FirebaseAuth.instance
-          .signInWithCredential(credential)
-          .timeout(_authTimeout);
+      final result = await GoogleSignInService().signIn();
+      if (result == null || !mounted) return;
       await _completeSocialSignIn(result.user, provider: 'google.com');
     } on TimeoutException {
       _showAuthError('Đăng nhập Google quá thời gian. Vui lòng thử lại.');
@@ -318,6 +310,20 @@ class _AuthScreenState extends State<AuthScreen> {
           return 'Thông tin đăng nhập $provider không hợp lệ.';
       }
       return error.message ?? 'Không thể đăng nhập bằng $provider.';
+    }
+    if (error is FirebaseException) {
+      return 'Đã xác thực với $provider nhưng chưa hoàn tất hồ sơ (${error.plugin}/${error.code}). Vui lòng thử lại.';
+    }
+    if (error is PlatformException) {
+      final text = '${error.code} ${error.message ?? ''}';
+      if (text.contains('ApiException: 10') ||
+          text.contains('DEVELOPER_ERROR')) {
+        return 'Cấu hình Google không khớp ứng dụng (mã 10). Cần kiểm tra package name, SHA và OAuth client.';
+      }
+      if (text.contains('network_error') || text.contains('ApiException: 7')) {
+        return 'Không kết nối được Google. Vui lòng kiểm tra mạng và thử lại (${error.code}).';
+      }
+      return 'Không thể đăng nhập bằng $provider (${error.code}). ${error.message ?? 'Vui lòng thử lại.'}';
     }
     final text = error.toString();
     if (text.contains('ApiException: 10') || text.contains('DEVELOPER_ERROR')) {

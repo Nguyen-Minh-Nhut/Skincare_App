@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../app_provider.dart';
 
 import '../home/scan_history.dart';
+import '../../widgets/saved_scan_image.dart';
 
 class ScanHistoryScreen extends StatefulWidget {
   const ScanHistoryScreen({super.key});
@@ -27,7 +30,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     );
   }
 
-  bool get _isEn => Localizations.localeOf(context).languageCode == 'en';
+  bool get _isEn => context.read<AppProvider>().isEnglish;
 
   Future<void> _delete(SavedScan scan) async {
     final confirmed = await showDialog<bool>(
@@ -78,6 +81,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppProvider>();
     return Scaffold(
       appBar: AppBar(title: Text(_isEn ? 'Scan history' : 'Lịch sử soi da')),
       body: FutureBuilder<List<SavedScan>>(
@@ -189,7 +193,7 @@ class _SavedScanDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final isEn = context.watch<AppProvider>().isEnglish;
     return Scaffold(
       appBar: AppBar(title: Text(isEn ? 'Scan result' : 'Kết quả soi da')),
       body: ListView(
@@ -197,15 +201,7 @@ class _SavedScanDetail extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: Image.file(
-              File(scan.imagePath),
-              height: 300,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(
-                height: 300,
-                child: Icon(Icons.broken_image_outlined, size: 48),
-              ),
-            ),
+            child: SavedScanImage(scan: scan),
           ),
           const SizedBox(height: 20),
           Text(
@@ -216,12 +212,15 @@ class _SavedScanDetail extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _row(isEn ? 'Assessment' : 'Đánh giá', scan.level),
-          _row(isEn ? 'Morning' : 'Buổi sáng', scan.morningRoutine),
-          _row(isEn ? 'Evening' : 'Buổi tối', scan.nightRoutine),
-          _row(
-            isEn ? 'Suggested ingredients' : 'Hoạt chất khuyên dùng',
-            scan.activeIngredients,
-          ),
+          if (scan.morningRoutine.isNotEmpty)
+            _row(isEn ? 'Morning' : 'Buổi sáng', scan.morningRoutine),
+          if (scan.nightRoutine.isNotEmpty)
+            _row(isEn ? 'Evening' : 'Buổi tối', scan.nightRoutine),
+          if (scan.activeIngredients.isNotEmpty)
+            _row(
+              isEn ? 'Suggested ingredients' : 'Hoạt chất khuyên dùng',
+              scan.activeIngredients,
+            ),
           _row(isEn ? 'Notes' : 'Lưu ý', scan.warning),
         ],
       ),

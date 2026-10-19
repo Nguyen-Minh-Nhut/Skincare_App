@@ -1,9 +1,13 @@
 import 'dart:math' as math;
+import 'dart:isolate';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'dart:async';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 class AcneBox {
   final double left;
@@ -253,48 +257,277 @@ List<AcneBox> parseYoloBoxes(
   return boxes;
 }
 
-class AcneDetectorPipeline {
-  AcneDetectorPipeline._(this._detector, this._classifier);
+/// Decode this model's normalized xywh output and undo letterboxing.
+List<AcneBox> decodeYoloTensor(
+  List<List<double>> channels, {
+  required int imageWidth,
+  required int imageHeight,
+  double minConfidence = .08,
+}) {
+  if (imageWidth <= 0 ||
+      imageHeight <= 0 ||
+      channels.length != 5 ||
+      channels.any((row) => row.length != channels.first.length)) {
+    throw const FormatException('Invalid YOLO output');
+  }
+  const side = 640;
+  final gain = math.min(side / imageWidth, side / imageHeight);
+  final px = ((side - (imageWidth * gain).round()) / 2).floor();
+  final py = ((side - (imageHeight * gain).round()) / 2).floor();
+  final boxes = <AcneBox>[];
+  for (var i = 0; i < channels.first.length; i++) {
+    final values = channels.map((row) => row[i]).toList();
+    if (values.any((v) => !v.isFinite) || values[4] < minConfidence) continue;
+    final cx = values[0] * side, cy = values[1] * side;
+    final w = values[2] * side, h = values[3] * side;
+    final x1 = ((cx - w / 2 - px) / gain).clamp(0.0, imageWidth.toDouble());
+    final y1 = ((cy - h / 2 - py) / gain).clamp(0.0, imageHeight.toDouble());
+    final x2 = ((cx + w / 2 - px) / gain).clamp(0.0, imageWidth.toDouble());
+    final y2 = ((cy + h / 2 - py) / gain).clamp(0.0, imageHeight.toDouble());
+    if (x2 <= x1 || y2 <= y1) continue;
+    boxes.add(
+      AcneBox(
+        left: x1,
+        top: y1,
+        width: x2 - x1,
+        height: y2 - y1,
+        confidence: values[4],
+      ),
+    );
+  }
+  return suppressDuplicateBoxes(
+    boxes,
+    iouThreshold: .7,
+    containmentThreshold: 1.01,
+  );
+}
 
-  final YOLO _detector;
-  final Interpreter _classifier;
-  bool _loaded = false;
+/// The worker owns its interpreters for their entire lifetime. Never re-wrap
+/// their addresses in another isolate: dynamic tensors can be invalidated.
+class AcneDetectorPipeline {
+  AcneDetectorPipeline._(this._isolate, this._port, this._directory);
+  final Directory _directory;
+  final Isolate _isolate;
+  final SendPort _port;
   bool _disposed = false;
 
-  static const String _yoloPath = 'assets/models/acne_detector.tflite';
-  static const String _cnnPath = 'assets/models/model_phan_loai_mun.tflite';
-
   static Future<AcneDetectorPipeline> create() async {
-    final detector = YOLO(modelPath: _yoloPath, task: YOLOTask.detect);
-    final classifier = await Interpreter.fromAsset(_cnnPath);
+    final yolo = await rootBundle.load(
+      'assets/models/acne_detector_mobile.tflite',
+    );
+    final cnn = await rootBundle.load(
+      'assets/models/model_phan_loai_mun.tflite',
+    );
+    // Use the numerically identical, inline-buffer mobile package. Keep model
+    // files alive until the worker closes its file-backed interpreters.
+    final directory = await (await getTemporaryDirectory()).createTemp(
+      'scan_models_',
+    );
+    final yoloFile = File('${directory.path}/detector.tflite');
+    final cnnFile = File('${directory.path}/classifier.tflite');
+    try {
+      await yoloFile.writeAsBytes(
+        yolo.buffer.asUint8List(yolo.offsetInBytes, yolo.lengthInBytes),
+        flush: true,
+      );
+      await cnnFile.writeAsBytes(
+        cnn.buffer.asUint8List(cnn.offsetInBytes, cnn.lengthInBytes),
+        flush: true,
+      );
+    } catch (_) {
+      await directory.delete(recursive: true);
+      rethrow;
+    }
+    final ready = ReceivePort();
+    final isolate = await Isolate.spawn(_scanWorker, [
+      ready.sendPort,
+      yoloFile.path,
+      cnnFile.path,
+    ]);
+    try {
+      final response = await ready.first.timeout(const Duration(seconds: 60));
+      if (response is! SendPort) {
+        throw StateError('Could not load scan models: $response');
+      }
+      return AcneDetectorPipeline._(isolate, response, directory);
+    } catch (_) {
+      isolate.kill(priority: Isolate.immediate);
+      await directory.delete(recursive: true);
+      rethrow;
+    } finally {
+      ready.close();
+    }
+  }
+
+  Future<List<AcneBox>> detectAndFilter(
+    Uint8List bytes, {
+    double minConfidence = .08,
+    double trustedDetectorConfidence = .15,
+  }) async => (await detectAndFilterWithBenchmark(
+    bytes,
+    minConfidence: minConfidence,
+    trustedDetectorConfidence: trustedDetectorConfidence,
+  )).boxes;
+
+  Future<AcneDetectionBenchmark> detectAndFilterWithBenchmark(
+    Uint8List bytes, {
+    double minConfidence = .08,
+    double trustedDetectorConfidence = .15,
+  }) async {
+    if (_disposed) throw StateError('Scan worker is closed');
+    final reply = ReceivePort();
+    _port.send([
+      reply.sendPort,
+      bytes,
+      minConfidence,
+      trustedDetectorConfidence,
+    ]);
+    try {
+      final response = await reply.first.timeout(const Duration(seconds: 120));
+      if (response is AcneDetectionBenchmark) return response;
+      throw StateError('Scan failed: $response');
+    } on TimeoutException {
+      _disposed = true;
+      _isolate.kill(priority: Isolate.immediate);
+      // Keep mapped files until worker teardown; cache cleanup is safe later.
+      rethrow;
+    } finally {
+      reply.close();
+    }
+  }
+
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    final reply = ReceivePort();
+    _port.send([reply.sendPort, null]);
+    try {
+      await reply.first.timeout(const Duration(seconds: 5));
+    } catch (_) {
+      _isolate.kill(priority: Isolate.immediate);
+    } finally {
+      reply.close();
+      try {
+        await _directory.delete(recursive: true);
+      } catch (_) {
+        /* Cache cleanup can retry on a later OS cleanup. */
+      }
+    }
+  }
+}
+
+Future<void> _scanWorker(List<dynamic> arguments) async {
+  final ready = arguments[0] as SendPort;
+  _AcneDetectorEngine engine;
+  try {
+    engine = _AcneDetectorEngine.create(
+      arguments[1] as String,
+      arguments[2] as String,
+    );
+  } catch (error) {
+    ready.send(error.toString());
+    return;
+  }
+  final requests = ReceivePort();
+  ready.send(requests.sendPort);
+  await for (final message in requests) {
+    final request = message as List;
+    final reply = request[0] as SendPort;
+    if (request[1] == null) {
+      await engine.dispose();
+      reply.send(true);
+      requests.close();
+      break;
+    }
+    try {
+      reply.send(
+        await engine.detectAndFilterWithBenchmark(
+          request[1] as Uint8List,
+          minConfidence: request[2] as double,
+          trustedDetectorConfidence: request[3] as double,
+        ),
+      );
+    } catch (error) {
+      reply.send(error.toString());
+    }
+  }
+}
+
+class _AcneDetectorEngine {
+  _AcneDetectorEngine._(this._detector, this._classifier);
+
+  final Interpreter _detector;
+  final Interpreter _classifier;
+  bool _disposed = false;
+
+  static _AcneDetectorEngine create(String yoloPath, String cnnPath) {
+    final detector = Interpreter.fromFile(File(yoloPath));
+    Interpreter classifier;
+    try {
+      if (!listEquals(detector.getInputTensor(0).shape, const [
+            1,
+            3,
+            640,
+            640,
+          ]) ||
+          !listEquals(detector.getOutputTensor(0).shape, const [1, 5, 8400])) {
+        throw StateError('Unexpected YOLO tensor shapes');
+      }
+      classifier = Interpreter.fromFile(File(cnnPath));
+    } catch (_) {
+      detector.close();
+      rethrow;
+    }
     final inputShape = classifier.getInputTensor(0).shape;
     final outputShape = classifier.getOutputTensor(0).shape;
     if (!listEquals(inputShape, const [1, 3, 224, 224]) ||
         outputShape.isEmpty ||
         outputShape.last < 2) {
       classifier.close();
+      detector.close();
       throw StateError(
         'Unexpected classifier shape: input=$inputShape, output=$outputShape',
       );
     }
 
-    final pipeline = AcneDetectorPipeline._(detector, classifier);
-    try {
-      await pipeline._ensureLoaded();
-      return pipeline;
-    } catch (_) {
-      await pipeline.dispose();
-      rethrow;
-    }
+    return _AcneDetectorEngine._(detector, classifier);
   }
 
-  Future<void> _ensureLoaded() async {
-    if (_disposed) throw StateError('Acne detector đã được giải phóng.');
-    if (_loaded) return;
-    if (!await _detector.loadModel()) {
-      throw StateError('Không thể tải YOLO11m.');
+  Future<List<AcneBox>> _detect(img.Image image, double minConfidence) async {
+    const side = 640;
+    final gain = math.min(side / image.width, side / image.height);
+    final width = (image.width * gain).round();
+    final height = (image.height * gain).round();
+    final left = ((side - width) / 2).floor();
+    final top = ((side - height) / 2).floor();
+    final resized = img.copyResize(
+      image,
+      width: width,
+      height: height,
+      interpolation: img.Interpolation.linear,
+    );
+    final input = Float32List(3 * side * side)
+      ..fillRange(0, 3 * side * side, 114 / 255);
+    for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        final pixel = resized.getPixel(x, y);
+        final index = (y + top) * side + x + left;
+        input[index] = pixel.r / 255;
+        input[index + side * side] = pixel.g / 255;
+        input[index + 2 * side * side] = pixel.b / 255;
+      }
     }
-    _loaded = true;
+    final output = List<double>.filled(5 * 8400, 0).reshape([1, 5, 8400]);
+    _detector.run(input.reshape([1, 3, side, side]), output);
+    final channels = (output[0] as List)
+        .map((row) => List<double>.from(row as List))
+        .toList();
+    return decodeYoloTensor(
+      channels,
+      imageWidth: image.width,
+      imageHeight: image.height,
+      minConfidence: minConfidence,
+    );
   }
 
   Float32List _imageToTensor(img.Image image) {
@@ -332,36 +565,15 @@ class AcneDetectorPipeline {
     double trustedDetectorConfidence = 0.15,
   }) async {
     final totalWatch = Stopwatch()..start();
-    await _ensureLoaded();
+    if (_disposed) throw StateError('Acne detector đã được giải phóng.');
     final finalBoxes = <AcneBox>[];
-    final yoloWatch = Stopwatch()..start();
-    final detectorResults = await _detector.predict(
-      imageBytes,
-      confidenceThreshold: minConfidence,
-    );
-    yoloWatch.stop();
-
     final decodeWatch = Stopwatch()..start();
     final originalImg = img.decodeImage(imageBytes);
     decodeWatch.stop();
-    if (originalImg == null) {
-      totalWatch.stop();
-      return AcneDetectionBenchmark(
-        boxes: const [],
-        decodeMicroseconds: decodeWatch.elapsedMicroseconds,
-        yoloMicroseconds: yoloWatch.elapsedMicroseconds,
-        classifierMicroseconds: 0,
-        totalMicroseconds: totalWatch.elapsedMicroseconds,
-        candidateCount: 0,
-        classifiedCount: 0,
-      );
-    }
-    final rawCandidates = parseYoloBoxes(
-      detectorResults,
-      imageWidth: originalImg.width,
-      imageHeight: originalImg.height,
-      minConfidence: minConfidence,
-    );
+    if (originalImg == null) throw const FormatException('Invalid image');
+    final yoloWatch = Stopwatch()..start();
+    final rawCandidates = await _detect(originalImg, minConfidence);
+    yoloWatch.stop();
     final candidates = rawCandidates
         .where(
           (box) => isPlausibleAcneBox(
@@ -453,8 +665,8 @@ class AcneDetectorPipeline {
         }
       } catch (error) {
         debugPrint('Lỗi phân loại vùng da: $error');
-        // Fail closed: classifier lỗi thì không được biến YOLO false-positive
-        // thành kết quả chẩn đoán hiển thị cho người dùng.
+        // A broken classifier must not appear as a successful zero-spot scan.
+        throw StateError('Could not classify a candidate region');
       }
     }
     classifierWatch.stop();
@@ -480,6 +692,6 @@ class AcneDetectorPipeline {
     if (_disposed) return;
     _disposed = true;
     _classifier.close();
-    await _detector.dispose();
+    _detector.close();
   }
 }

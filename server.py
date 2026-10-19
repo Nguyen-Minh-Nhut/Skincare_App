@@ -1,49 +1,87 @@
-from flask import Flask, request, jsonify
-import cv2
-import numpy as np
-import base64
+"""Local AI browser tester. Run: .venv-ai/bin/python server.py"""
+import argparse
+import json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlsplit
 
-app = Flask(__name__)
+from tools.scan_browser.inference import Pipeline, ROOT
 
-@app.route('/analyze_skin', methods=['POST'])
-def analyze_skin():
-    try:
-        # 1. Nhận ảnh Base64 từ Flutter gửi lên
-        data = request.json
-        image_data = data['image_base64']
+MAX_BYTES = 12 * 1024 * 1024
 
-        # 2. Giải mã ảnh để OpenCV đọc được
-        img_bytes = base64.b64decode(image_data)
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # ==========================================
-        # 3. KHU VỰC CHÈN CODE AI CỦA SẾP
-        # Dùng MediaPipe khoanh vùng mặt & OpenCV tìm đốm đỏ ở đây
-        # Tạm thời trả về dữ liệu thật có cấu trúc để App vẽ
-        # ==========================================
+def handler(pipeline, port):
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *_args):
+            pass  # Do not log photos, request bodies or identifiers.
 
-        acne_count = 3 # Giả sử AI đếm được 3 cục mụn
-        skin_type = "Da Dầu"
+        def allowed(self):
+            hosts = {f'127.0.0.1:{port}', f'localhost:{port}'}
+            if self.headers.get('Host') not in hosts:
+                self.send_error(403)
+                return False
+            origin = self.headers.get('Origin')
+            if origin and origin not in {f'http://{host}' for host in hosts}:
+                self.send_error(403)
+                return False
+            return True
 
-        # Tọa độ (top, left) của các cục mụn AI tìm thấy
-        acne_coordinates = [
-            {"top": 100, "left": 120},
-            {"top": 150, "left": 200},
-            {"top": 250, "left": 150}
-        ]
+        def respond(self, status, data, content_type='application/json; charset=utf-8'):
+            body = json.dumps(data, ensure_ascii=False).encode() if not isinstance(data, bytes) else data
+            self.send_response(status)
+            self.send_header('Content-Type', content_type)
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            self.wfile.write(body)
 
-        # 4. Trả kết quả về cho App Flutter
-        return jsonify({
-            "status": "success",
-            "acne_count": acne_count,
-            "skin_type": skin_type,
-            "coordinates": acne_coordinates
-        })
+        def do_GET(self):
+            if not self.allowed():
+                return
+            path = urlsplit(self.path).path
+            if path == '/':
+                self.respond(200, (ROOT/'tools/scan_browser/index.html').read_bytes(), 'text/html; charset=utf-8')
+            elif path == '/health':
+                self.respond(200, {'ready': True, 'engine': 'YOLO11m + MobileNetV2'})
+            elif path in ['/sample/acne', '/sample/control']:
+                name = 'anh_da_mun.jpg' if path.endswith('acne') else 'anh_2.jpg'
+                self.respond(200, (ROOT/'assets/image'/name).read_bytes(), 'image/jpeg')
+            else:
+                self.respond(404, {'message': 'Not found'})
 
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        def do_POST(self):
+            if not self.allowed():
+                return
+            if self.path != '/analyze_skin':
+                self.respond(404, {'message': 'Not found'})
+                return
+            try:
+                size = int(self.headers.get('Content-Length', '0'))
+            except ValueError:
+                size = 0
+            if not 0 < size <= MAX_BYTES:
+                self.respond(413, {'message': 'Ảnh phải có dung lượng từ 1 byte đến 12 MB.'})
+                return
+            self.connection.settimeout(30)
+            try:
+                data = self.rfile.read(size)
+                if len(data) != size:
+                    raise ValueError('Ảnh tải lên chưa đầy đủ.')
+                self.respond(200, pipeline.analyze(data))
+            except ValueError as error:
+                self.respond(400, {'message': str(error)})
+            except Exception:
+                self.respond(500, {'message': 'Model không phân tích được ảnh. Hãy thử lại hoặc chọn ảnh khác.'})
+    return Handler
+
 
 if __name__ == '__main__':
-    # Chạy server ở port 5000
-    app.run(host='0.0.0.0', port=5000)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=8765)
+    args = parser.parse_args()
+    print('Loading real TFLite models...', flush=True)
+    pipeline = Pipeline()
+    with ThreadingHTTPServer(('127.0.0.1', args.port), handler(pipeline, args.port)) as server:
+        print(f'Ready: http://127.0.0.1:{args.port}', flush=True)
+        server.serve_forever()

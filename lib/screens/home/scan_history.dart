@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,9 @@ class SavedScan {
     required this.nightRoutine,
     required this.activeIngredients,
     required this.warning,
+    this.regions = const [],
+    this.imageWidth,
+    this.imageHeight,
   });
 
   final String id;
@@ -28,6 +32,9 @@ class SavedScan {
   final String nightRoutine;
   final String activeIngredients;
   final String warning;
+  final List<Map<String, double>> regions;
+  final int? imageWidth;
+  final int? imageHeight;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -40,6 +47,9 @@ class SavedScan {
     'nightRoutine': nightRoutine,
     'activeIngredients': activeIngredients,
     'warning': warning,
+    'regions': regions,
+    'imageWidth': imageWidth,
+    'imageHeight': imageHeight,
   };
 
   factory SavedScan.fromJson(Map<String, dynamic> json) => SavedScan(
@@ -53,11 +63,30 @@ class SavedScan {
     nightRoutine: json['nightRoutine'] as String,
     activeIngredients: json['activeIngredients'] as String,
     warning: json['warning'] as String,
+    regions: (json['regions'] as List? ?? [])
+        .whereType<Map>()
+        .map(
+          (r) => r.map(
+            (key, value) => MapEntry(key.toString(), (value as num).toDouble()),
+          ),
+        )
+        .where(
+          (r) => [
+            'left',
+            'top',
+            'width',
+            'height',
+          ].every((key) => r[key]?.isFinite ?? false),
+        )
+        .toList(),
+    imageWidth: json['imageWidth'] as int?,
+    imageHeight: json['imageHeight'] as int?,
   );
 }
 
 class ScanHistoryStore {
   static const _storageKey = 'saved_skin_scans_v1';
+  static final changes = ValueNotifier<int>(0);
 
   static Future<List<SavedScan>> load({required String userId}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -88,6 +117,9 @@ class ScanHistoryStore {
     required String nightRoutine,
     required String activeIngredients,
     required String warning,
+    List<Map<String, double>> regions = const [],
+    int? imageWidth,
+    int? imageHeight,
   }) async {
     final now = DateTime.now();
     final id = now.microsecondsSinceEpoch.toString();
@@ -111,6 +143,9 @@ class ScanHistoryStore {
       nightRoutine: nightRoutine,
       activeIngredients: activeIngredients,
       warning: warning,
+      regions: regions,
+      imageWidth: imageWidth,
+      imageHeight: imageHeight,
     );
     final prefs = await SharedPreferences.getInstance();
     final items = [...prefs.getStringList(_storageKey) ?? const <String>[]];
@@ -119,6 +154,7 @@ class ScanHistoryStore {
       await savedImage.delete();
       throw StateError('Could not save local scan history');
     }
+    changes.value++;
     return scan;
   }
 
@@ -163,6 +199,7 @@ class ScanHistoryStore {
     if (!await prefs.setStringList(_storageKey, retained)) {
       throw StateError('Could not remove local scan history');
     }
+    changes.value++;
     final image = File(scan.imagePath);
     if (await image.exists()) await image.delete();
   }

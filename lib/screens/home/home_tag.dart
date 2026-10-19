@@ -26,7 +26,14 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
+    ScanHistoryStore.changes.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    ScanHistoryStore.changes.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -107,8 +114,8 @@ class _HomeTabState extends State<HomeTab> {
                     child: Text(
                       _scans.isEmpty
                           ? (en
-                                ? 'No saved results yet. AI scanning is under maintenance.'
-                                : 'Chưa có kết quả đã lưu. Quét AI đang bảo trì.')
+                                ? 'No saved results yet. Try the experimental scan in Skin tracking.'
+                                : 'Chưa có kết quả đã lưu. Mở Theo dõi da để quét thử nghiệm.')
                           : (en
                                 ? '${_scans.first.acneCount} spots detected · ${_scans.first.createdAt.day}/${_scans.first.createdAt.month}/${_scans.first.createdAt.year}'
                                 : '${_scans.first.acneCount} nốt được phát hiện · ${_scans.first.createdAt.day}/${_scans.first.createdAt.month}/${_scans.first.createdAt.year}'),
@@ -148,8 +155,8 @@ class _HomeTabState extends State<HomeTab> {
                             const SizedBox(height: 5),
                             Text(
                               en
-                                  ? 'Saved results and trends · AI scanning under maintenance'
-                                  : 'Lịch sử và thay đổi của da · Quét AI đang bảo trì',
+                                  ? 'Saved results and trends · experimental AI scan'
+                                  : 'Lịch sử và thay đổi của da · Quét AI thử nghiệm',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,

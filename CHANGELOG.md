@@ -1,5 +1,25 @@
 # Lịch sử phiên bản
 
+## 2.0.1 - 2026-10-19
+
+Build: `2.0.1+7` · Git tag: `v2.0.1`
+
+- Thêm gói YOLO mobile nhúng 157 buffer trọng số để runtime di động không báo thiếu tensor. Giữ nguyên byte trọng số, kiểm tra đầu ra cùng input sai khác bằng 0; bản model gốc vẫn giữ cho nghiên cứu.
+- Thêm kiểm tra ảnh một khuôn mặt trên mobile bằng ML Kit/Vision: phát hiện không có mặt, nhiều mặt, góc nghiêng lớn và mặt quá xa; chặn ảnh quá tối/sáng bằng heuristic.
+- Cho xoay ảnh và chọn lại khi không đạt. Ghi rõ hạn chế mụn đầu đen, nguy cơ bỏ sót/nhận nhầm; không thay ngưỡng acne model.
+- Worker nền sở hữu hai interpreter, trả lỗi về UI và có thời hạn chờ để tránh treo khi model thất bại; lưu cả khung nhận diện để xem lại trong lịch sử. Lịch sử cũ vẫn đọc được; ẩn các dòng routine/hoạt chất trống.
+- Sửa Google Sign-In: không giới hạn 10 giây ở cửa sổ chọn tài khoản/xác minh, kiểm tra ID token và hiển thị mã lỗi cụ thể. Chưa xác nhận OAuth Google trên điện thoại thật.
+- Thêm kiểm thử đăng nhập qua Firebase emulator và kiểm tra ảnh–quét–lưu trên Android, cùng bài thử mở tiến trình mới để đọc lại lịch sử. Cấu hình HTTP localhost chỉ áp dụng bản debug.
+- Sửa lỗi Run main.dart trên Chrome (`dart:ffi is not available`): conditional export màn quét native/web, web dẫn tới bộ kiểm thử cục bộ.
+
+- Sửa đầu vào YOLO NCHW `[1,3,640,640]`: dùng trực tiếp TFLite cho cả hai model thay vì plugin Android giả định NHWC; giải mã output chuẩn hóa và hoàn tác letterbox.
+- Mở luồng quét thử nghiệm trên Android/iOS: chọn/chụp ảnh, phân tích, xem khung, lưu và xem lịch sử. Thêm quyền camera/thư viện cho iOS.
+- Thay server trả cố định 3 nốt bằng trang kiểm thử AI cục bộ chạy hai model TFLite thật trên Mac. Có ảnh mẫu/đối chứng, lỗi ảnh, kết quả JSON và lịch sử trong phiên.
+- Chuẩn hóa chiều ảnh trước khi nhận diện/lưu; không hiển thị lỗi decode/classifier như kết quả 0 nốt. Bỏ diễn giải mức độ bệnh và lời khuyên thuốc dựa trên số vùng.
+- Trang thử browser chưa kiểm tra khuôn mặt/ánh sáng tự động. Chưa xác nhận trên điện thoại thật.
+
+Xác minh: 60 bài Flutter và 5 bài Python thành công; luồng Android giả lập và lưu trữ qua tiến trình mới đạt; web release và iOS simulator arm64 build thành công. Chi tiết ở [báo cáo kiểm thử](deliverables/v2.0.1-validation.md).
+
 ## 2.0.0 - 2026-10-19
 
 Build: `2.0.0+6` · Git tag: `v2.0.0`

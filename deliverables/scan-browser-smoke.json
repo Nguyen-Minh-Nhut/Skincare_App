@@ -1,0 +1,45 @@
+{
+  "sample": {
+    "boxes": [
+      {
+        "left": 266.32171573862433,
+        "top": 215.04236004687846,
+        "width": 27.537727184593678,
+        "height": 27.464430075138807,
+        "confidence": 0.3437903821468353
+      },
+      {
+        "left": 410.5407687090337,
+        "top": 30.510091485455632,
+        "width": 35.66476161032915,
+        "height": 35.79240819439292,
+        "confidence": 0.20147155225276947
+      }
+    ],
+    "acne_count": 2,
+    "width": 653,
+    "height": 490,
+    "candidates": 5,
+    "classified": 2,
+    "elapsed_ms": 167,
+    "engine": "YOLO11m + MobileNetV2 (TFLite, local CPU)",
+    "note": "Kết quả thử nghiệm, không phải chẩn đoán. Chưa kiểm tra ảnh có khuôn mặt hay ánh sáng đạt chuẩn."
+  },
+  "control": {
+    "boxes": [],
+    "acne_count": 0,
+    "width": 1200,
+    "height": 675,
+    "candidates": 0,
+    "classified": 0,
+    "elapsed_ms": 141,
+    "engine": "YOLO11m + MobileNetV2 (TFLite, local CPU)",
+    "note": "Kết quả thử nghiệm, không phải chẩn đoán. Chưa kiểm tra ảnh có khuôn mặt hay ánh sáng đạt chuẩn."
+  },
+  "invalid": {
+    "http_status": 400
+  },
+  "cross-origin": {
+    "http_status": 403
+  }
+}
